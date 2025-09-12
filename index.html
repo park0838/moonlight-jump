@@ -1,0 +1,2787 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- 🛡️ SECURITY: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <title>Moonlight Jump</title>
+    <!-- 🛡️ SECURITY: CDN resources with SRI integrity hashes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js" 
+            integrity="sha384-OqQP3UcU7efkEYDRjGmQou2uEvzGFGRtwdYXTjnupeB9cWogSgQ4BOhyklFBYbBR" 
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" 
+            integrity="sha384-oHYQNeDBTZNj6KnIfJMAzcEn2OTbeMKKXFeEwU6T+pH0oS1yTIzEBaW6BXmCtvs2" 
+            crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" 
+          rel="stylesheet" crossorigin="anonymous">
+    <style>
+        :root {
+            --primary-color: #00d4ff;
+            --secondary-color: #ff6b6b;
+            --accent-color: #4ecdc4;
+            --bg-dark: #0a0a0f;
+            --bg-darker: #060609;
+            --text-light: #ffffff;
+            --text-muted: #a0a0a0;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --success-color: #00ff88;
+            --warning-color: #ffaa00;
+            --danger-color: #ff4757;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(ellipse at center, var(--bg-dark) 0%, var(--bg-darker) 100%);
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-light);
+            height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Performance optimized particles background */
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.6;
+            will-change: transform;
+        }
+
+        /* Main game container */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+        }
+
+        /* Enhanced UI with glassmorphism */
+        #ui {
+            position: fixed;
+            top: clamp(10px, 2vh, 20px);
+            left: clamp(10px, 2vw, 20px);
+            right: clamp(10px, 2vw, 20px);
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            pointer-events: none;
+        }
+
+        .ui-element {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: clamp(8px, 1.5vh, 16px) clamp(12px, 3vw, 20px);
+            font-weight: 600;
+            font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .ui-element:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+            position: relative;
+        }
+
+        #height-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 30px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3));
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-30px); }
+            100% { transform: translateX(100px); }
+        }
+
+        /* Screen transitions with improved UX */
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(30px);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            opacity: 1;
+            visibility: visible;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 2rem;
+        }
+
+        .screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.95);
+        }
+
+        .title {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 700;
+            margin-bottom: clamp(1rem, 4vh, 2rem);
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: titleGlow 3s ease-in-out infinite alternate;
+            letter-spacing: -0.02em;
+        }
+
+        @keyframes titleGlow {
+            from { filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.3)); }
+            to { filter: drop-shadow(0 0 40px rgba(0, 212, 255, 0.6)); }
+        }
+
+        .subtitle {
+            font-size: clamp(0.9rem, 3vw, 1.1rem);
+            color: var(--text-muted);
+            margin-bottom: clamp(2rem, 6vh, 3rem);
+            font-weight: 300;
+            line-height: 1.6;
+            max-width: 500px;
+        }
+
+        .instructions {
+            margin-bottom: clamp(2rem, 6vh, 3rem);
+            line-height: 1.8;
+            font-size: clamp(0.95rem, 3vw, 1.1rem);
+            color: var(--text-muted);
+            max-width: 400px;
+        }
+
+        .instructions p {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .key-hint {
+            background: var(--glass-bg);
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        /* Enhanced buttons with better accessibility */
+        .game-button {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border: none;
+            color: var(--text-light);
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
+            font-weight: 600;
+            padding: clamp(12px, 3vh, 18px) clamp(24px, 6vw, 36px);
+            margin: 0.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: relative;
+            overflow: hidden;
+            min-width: 140px;
+        }
+
+        .game-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .game-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 48px rgba(0, 212, 255, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .game-button:hover::before {
+            left: 100%;
+        }
+
+        .game-button:active {
+            transform: translateY(0);
+            transition: transform 0.1s;
+        }
+
+        .game-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Enhanced player with smooth animations */
+        #player {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, var(--text-light), var(--primary-color));
+            box-shadow: 
+                0 0 20px rgba(0, 212, 255, 0.6),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.3);
+            z-index: 999;
+            will-change: transform;
+            transition: filter 0.2s ease;
+        }
+
+        #player.jumping {
+            animation: playerJump 0.3s ease-out;
+        }
+
+        @keyframes playerJump {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 15px rgba(0, 212, 255, 0.8)); }
+            100% { filter: brightness(1); }
+        }
+
+        /* Enhanced platforms with better visual hierarchy */
+        .platform {
+            position: absolute;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: var(--text-muted);
+            z-index: 5;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            will-change: transform;
+        }
+
+        .platform.spring {
+            color: var(--success-color);
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+            animation: springPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes springPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.4); }
+        }
+
+        /* Particle effects with GPU acceleration */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 800;
+            border-radius: 50%;
+            will-change: transform, opacity;
+        }
+
+        .jump-particle {
+            width: 3px;
+            height: 3px;
+            background: var(--primary-color);
+            box-shadow: 0 0 6px var(--primary-color);
+            animation: jumpParticleAnim 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes jumpParticleAnim {
+            0% { 
+                opacity: 1; 
+                transform: scale(1) translateY(0); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(0.3) translateY(-60px); 
+            }
+        }
+
+        .land-particle {
+            width: 4px;
+            height: 4px;
+            background: var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-color);
+            animation: landParticleAnim 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes landParticleAnim {
+            0% { 
+                opacity: 1; 
+                transform: scale(1) translateX(0) translateY(0); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(0.2) translateX(var(--spread, 40px)) translateY(10px); 
+            }
+        }
+
+        /* Loading screen */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg-darker);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 212, 255, 0.1);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Touch interaction animations */
+        @keyframes touchRipple {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(3);
+                opacity: 0;
+            }
+        }
+        
+        /* Achievement popup animation */
+        @keyframes achievementSlideIn {
+            0% {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            20% {
+                transform: translateX(-10px);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive design improvements */
+        @media (max-width: 768px) {
+            #ui {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .ui-element {
+                font-size: clamp(0.8rem, 4vw, 1rem);
+                padding: clamp(6px, 2vh, 12px) clamp(10px, 4vw, 16px);
+            }
+
+            #player {
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        @media (max-height: 500px) {
+            .title {
+                font-size: clamp(2rem, 6vh, 3rem);
+                margin-bottom: 1rem;
+            }
+            
+            .instructions, .subtitle {
+                margin-bottom: 1.5rem;
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus indicators for keyboard navigation */
+        .game-button:focus-visible,
+        .ui-element:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        
+        /* Danger warning effect */
+        body.danger-warning {
+            box-shadow: inset 0 0 50px rgba(255, 71, 87, 0.3);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        /* Jump charge indicator */
+        .jump-charge-indicator {
+            position: fixed;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 8px;
+            background: var(--glass-bg);
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 150;
+        }
+        
+        .jump-charge-indicator.visible {
+            opacity: 1;
+        }
+        
+        .jump-charge-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--warning-color), var(--primary-color));
+            border-radius: 8px;
+            transition: width 0.1s ease;
+        }
+        
+        /* Tutorial overlay */
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 10, 15, 0.9);
+            z-index: 1500;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .tutorial-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .tutorial-content {
+            max-width: 500px;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .tutorial-step {
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: tutorialSlideIn 0.5s ease forwards;
+        }
+        
+        .tutorial-step.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        @keyframes tutorialSlideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* FPS counter */
+        .fps-counter {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--glass-bg);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--success-color);
+            opacity: 0.8;
+            z-index: 200;
+            pointer-events: none;
+        }
+        
+        /* Enhanced platform hover effects */
+        .platform:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+        }
+        
+        .platform.spring:hover {
+            transform: translateY(-1px) scale(1.02);
+            box-shadow: 0 4px 16px rgba(0, 255, 136, 0.3);
+        }
+        
+        /* Enhanced platform spring animation */
+        .platform.spring.activated {
+            animation: springActivated 0.3s ease-out;
+        }
+        
+        @keyframes springActivated {
+            0% { transform: scaleY(0.7) translateY(3px); }
+            50% { transform: scaleY(1.2) translateY(-2px); }
+            100% { transform: scaleY(1) translateY(0); }
+        }
+        
+        /* Landing impact effects */
+        .platform.landing-impact {
+            animation: landingImpact 0.2s ease-out;
+        }
+        
+        @keyframes landingImpact {
+            0% { transform: scaleY(1); }
+            50% { transform: scaleY(0.95) translateY(1px); }
+            100% { transform: scaleY(1) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading screen -->
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Background particles -->
+    <div id="particles-js"></div>
+    
+    <div id="game-container">
+        <!-- Enhanced UI -->
+        <div id="ui">
+            <div class="ui-element" id="score">
+                <span id="height">0m</span>
+            </div>
+            <div class="ui-element" id="best-score">
+                최고: <span id="best">0m</span>
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+
+        <!-- Game elements -->
+        <div id="player"></div>
+        <div id="platforms"></div>
+        <div id="particles-container"></div>
+
+        <!-- Menu Screen -->
+        <div id="menu-screen" class="screen">
+            <div class="title">MOONLIGHT JUMP</div>
+            <div class="subtitle">중력을 거슬러 달까지 올라가세요</div>
+            <div class="instructions">
+                <p><span class="key-hint">Spacebar</span> Jump (Hold for higher jump)</p>
+                <p><span class="key-hint">A</span> <span class="key-hint">D</span> Move left/right</p>
+                <p><span style="color: var(--text-muted);">Mobile: Touch and hold to jump</span></p>
+            </div>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                <button id="start-button" class="game-button" role="button" aria-label="Start Game">Start</button>
+                <button id="tutorial-button" class="game-button" role="button" aria-label="Show Tutorial">Tutorial</button>
+            </div>
+        </div>
+        
+        <!-- Tutorial Screen -->
+        <div id="tutorial-screen" class="tutorial-overlay hidden">
+            <div class="tutorial-content">
+                <div id="tutorial-step-1" class="tutorial-step">
+                    <h2>Welcome to Moonlight Jump!</h2>
+                    <p>Master these controls to reach the moon:</p>
+                </div>
+                <div id="tutorial-step-2" class="tutorial-step">
+                    <h3>🚀 Jump Controls</h3>
+                    <p>• <strong>Tap</strong> Spacebar for small jumps</p>
+                    <p>• <strong>Hold</strong> Spacebar for higher jumps</p>
+                    <p>• You can jump briefly after leaving a platform</p>
+                </div>
+                <div id="tutorial-step-3" class="tutorial-step">
+                    <h3>🏃 Movement</h3>
+                    <p>• Use <strong>A/D</strong> or Arrow Keys to move</p>
+                    <p>• You have air control while jumping</p>
+                    <p>• Wrap around screen edges</p>
+                </div>
+                <div id="tutorial-step-4" class="tutorial-step">
+                    <h3>💚 Spring Platforms</h3>
+                    <p>• Green platforms give super jumps</p>
+                    <p>• Land on them for a boost to the sky</p>
+                </div>
+                <div id="tutorial-step-5" class="tutorial-step">
+                    <button id="tutorial-start" class="game-button">Start Playing!</button>
+                    <button id="tutorial-close" class="game-button">Back to Menu</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Jump Charge Indicator -->
+        <div id="jump-charge-indicator" class="jump-charge-indicator">
+            <div id="jump-charge-fill" class="jump-charge-fill"></div>
+        </div>
+        
+        <!-- FPS Counter (Debug Mode) -->
+        <div id="fps-counter" class="fps-counter" style="display: none;">
+            FPS: <span id="fps-value">60</span>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen hidden">
+            <div class="title" style="background: linear-gradient(135deg, var(--danger-color), var(--warning-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Game Over</div>
+            <div id="final-score" style="font-size: clamp(1.5rem, 5vw, 2rem); margin-bottom: clamp(1rem, 3vh, 1.5rem); font-weight: 600;">
+                높이: <span>0m</span>
+            </div>
+            <div id="new-record" class="hidden" style="color: var(--success-color); font-size: clamp(1.2rem, 4vw, 1.5rem); margin-bottom: clamp(1rem, 3vh, 1.5rem); font-weight: 600;">
+                🎉 신기록!
+            </div>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                <button id="restart-button" class="game-button" role="button" aria-label="Restart Game">Restart</button>
+                <button id="menu-button" class="game-button" role="button" aria-label="메뉴로 돌아가기">메뉴</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced error handling and performance monitoring
+        class GameError extends Error {
+            constructor(message, context = {}) {
+                super(message);
+                this.context = context;
+                this.name = 'GameError';
+            }
+        }
+
+        // Performance monitor
+        class PerformanceMonitor {
+            constructor() {
+                this.fps = 60;
+                this.frameTime = 0;
+                this.lastFrameTime = performance.now();
+            }
+
+            update() {
+                const currentTime = performance.now();
+                this.frameTime = currentTime - this.lastFrameTime;
+                this.fps = Math.round(1000 / this.frameTime);
+                this.lastFrameTime = currentTime;
+                
+                // Auto-adjust quality based on performance
+                if (this.fps < 30) {
+                    this.optimizePerformance();
+                }
+            }
+
+            optimizePerformance() {
+                // Reduce particle count on low performance
+                const particlesContainer = document.getElementById('particles-container');
+                if (particlesContainer && particlesContainer.children.length > 20) {
+                    Array.from(particlesContainer.children).slice(0, 10).forEach(child => child.remove());
+                }
+            }
+        }
+
+        const performanceMonitor = new PerformanceMonitor();
+
+        // Enhanced game configuration with responsive values
+        const GAME_CONFIG = {
+            jumpPower: 16.5,
+            horizontalSpeed: 3.2,
+            platformGap: Math.max(80, window.innerHeight * 0.12),
+            gameWidth: window.innerWidth,
+            gameHeight: window.innerHeight,
+            maxHeight: 15000,
+            particleLimit: 25,
+            // Enhanced platform generation - tighter spacing for infinite feel
+            chunkSize: 25, // platforms per chunk
+            chunkHeight: 1500, // height per chunk in pixels
+            generationAhead: 5, // chunks to generate ahead
+            cleanupBehind: 2000, // pixels behind player to cleanup
+            minPlatformWidth: 60, // minimum platform width
+            maxPlatformWidth: 140, // maximum platform width
+            platformHeightRange: 60, // vertical spacing range
+            // Camera settings - smoother and more responsive
+            cameraDeadzone: 30,
+            cameraLookAhead: 60,
+            cameraSmoothness: 0.08,
+            maxCameraShake: 4,
+            // Physics settings - more forgiving
+            coyoteTime: 180, // ms grace period for jumping
+            jumpBufferTime: 120, // ms to buffer jump input
+            variableJumpFactor: 0.7,
+            maxHorizontalVelocity: 3.5,
+            airControl: 0.85, // how much control player has in air
+            // Physics race condition prevention
+            springCooldown: 150, // ms cooldown between spring activations
+            collisionValidationDelay: 10, // ms delay for collision state validation
+            groundCheckDelay: 50 // ms delay before checking if still grounded
+        };
+
+        // Matter.js modules
+        const { Engine, World, Bodies, Body, Events, Runner } = Matter;
+
+        // Physics engine
+        let engine, world, runner;
+        let playerBody;
+        let platforms = [];
+        let gameLoopId = null;
+
+        // Enhanced game state with comprehensive features and debugging
+        let gameState = {
+            currentState: 'loading',
+            camera: { 
+                y: 0, 
+                targetY: 0,
+                offsetX: 0,
+                velocity: { x: 0, y: 0 }
+            },
+            score: { height: 0, best: parseInt(localStorage.getItem('quantum-jump-best') || '0') },
+            keys: {},
+            canJump: false,
+            isGameRunning: false,
+            touchStartY: 0,
+            lastJumpTime: 0,
+            particleCount: 0,
+            // Enhanced physics state
+            lastGroundedTime: 0,
+            jumpBufferTime: 0,
+            isJumping: false,
+            jumpHoldTime: 0,
+            jumpChargeStartTime: 0,
+            // Tutorial and first-time play
+            isFirstTime: !localStorage.getItem('quantum-jump-played'),
+            tutorialCompleted: localStorage.getItem('quantum-jump-tutorial') === 'true',
+            currentTutorialStep: 1,
+            // Debug and monitoring
+            debugMode: false,
+            performanceWarnings: 0,
+            lastFPSUpdate: 0,
+            // Achievement tracking
+            achievements: {
+                firstJump: false,
+                height100: false,
+                height500: false,
+                height1000: false,
+                springUse: false
+            },
+            // Chunk management
+            currentChunk: 0,
+            loadedChunks: new Set(),
+            platformChunks: new Map(),
+            // Physics race condition prevention
+            lastSpringTime: 0,
+            collisionState: new Map(),
+            physicsLocked: false,
+            collisionCooldowns: new Map()
+        };
+
+        // DOM elements with null checks and new UI elements
+        const elements = {
+            loading: document.getElementById('loading'),
+            player: document.getElementById('player'),
+            platformsContainer: document.getElementById('platforms'),
+            particlesContainer: document.getElementById('particles-container'),
+            heightScore: document.getElementById('height'),
+            bestScore: document.getElementById('best'),
+            heightFill: document.getElementById('height-fill'),
+            menuScreen: document.getElementById('menu-screen'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            tutorialScreen: document.getElementById('tutorial-screen'),
+            finalScore: document.querySelector('#final-score span'),
+            newRecord: document.getElementById('new-record'),
+            startButton: document.getElementById('start-button'),
+            tutorialButton: document.getElementById('tutorial-button'),
+            tutorialStart: document.getElementById('tutorial-start'),
+            tutorialClose: document.getElementById('tutorial-close'),
+            restartButton: document.getElementById('restart-button'),
+            menuButton: document.getElementById('menu-button'),
+            jumpChargeIndicator: document.getElementById('jump-charge-indicator'),
+            jumpChargeFill: document.getElementById('jump-charge-fill'),
+            fpsCounter: document.getElementById('fps-counter'),
+            fpsValue: document.getElementById('fps-value')
+        };
+
+        // Enhanced Sound System with comprehensive audio feedback
+        class SoundEngine {
+            constructor() {
+                this.audioContext = null;
+                this.masterGain = null;
+                this.isInitialized = false;
+                this.soundQueue = [];
+                this.volume = parseFloat(localStorage.getItem('quantum-jump-volume') || '0.2');
+            }
+
+            async init() {
+                if (this.isInitialized) return;
+                
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.audioContext.createGain();
+                    this.masterGain.connect(this.audioContext.destination);
+                    this.masterGain.gain.value = this.volume;
+                    this.isInitialized = true;
+                    
+                    // Process queued sounds
+                    this.soundQueue.forEach(sound => sound());
+                    this.soundQueue = [];
+                } catch (e) {
+                    console.warn('Audio initialization failed:', e);
+                }
+            }
+
+            async resumeContext() {
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                }
+            }
+
+            playTone(frequency, duration, type = 'sine', envelope = null) {
+                if (!this.isInitialized) {
+                    this.soundQueue.push(() => this.playTone(frequency, duration, type, envelope));
+                    return;
+                }
+
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.masterGain);
+
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    oscillator.type = type;
+
+                    if (envelope) {
+                        gainNode.gain.setValueAtTime(envelope.attack, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(envelope.decay, this.audioContext.currentTime + duration * 0.3);
+                        gainNode.gain.exponentialRampToValueAtTime(envelope.sustain, this.audioContext.currentTime + duration * 0.7);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+                    } else {
+                        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+                    }
+
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + duration);
+                } catch (e) {
+                    console.warn('Sound playback failed:', e);
+                }
+            }
+
+            jump() {
+                this.playTone(440, 0.15, 'square', { attack: 0.3, decay: 0.2, sustain: 0.1 });
+                setTimeout(() => this.playTone(660, 0.08, 'sine'), 30);
+            }
+
+            land() {
+                this.playTone(220, 0.12, 'triangle', { attack: 0.4, decay: 0.2, sustain: 0.1 });
+            }
+            
+            heavyLand() {
+                this.playTone(180, 0.15, 'triangle', { attack: 0.5, decay: 0.25, sustain: 0.1 });
+                setTimeout(() => this.playTone(140, 0.1, 'triangle'), 80);
+            }
+
+            spring() {
+                this.playTone(880, 0.25, 'sawtooth', { attack: 0.6, decay: 0.3, sustain: 0.2 });
+            }
+
+            gameOver() {
+                this.playTone(200, 0.4, 'triangle');
+                setTimeout(() => this.playTone(150, 0.4, 'triangle'), 150);
+                setTimeout(() => this.playTone(100, 0.8, 'triangle'), 300);
+            }
+
+            achievement() {
+                [523, 659, 784, 1047].forEach((freq, i) => {
+                    setTimeout(() => this.playTone(freq, 0.2, 'sine'), i * 100);
+                });
+            }
+            
+            chargedJump() {
+                // Enhanced jump sound for charged jumps
+                this.playTone(550, 0.2, 'square', { attack: 0.4, decay: 0.25, sustain: 0.15 });
+                setTimeout(() => this.playTone(880, 0.1, 'sine'), 50);
+                setTimeout(() => this.playTone(1320, 0.08, 'sine'), 100);
+            }
+            
+            coyoteJump() {
+                // Special sound for coyote time jumps
+                this.playTone(330, 0.18, 'triangle', { attack: 0.2, decay: 0.15, sustain: 0.1 });
+                setTimeout(() => this.playTone(550, 0.1, 'sine'), 40);
+            }
+            
+            warning() {
+                // Warning sound for danger situations
+                this.playTone(200, 0.3, 'sawtooth', { attack: 0.5, decay: 0.3, sustain: 0.2 });
+            }
+            
+            setVolume(volume) {
+                this.volume = Math.max(0, Math.min(1, volume));
+                if (this.masterGain) {
+                    this.masterGain.gain.value = this.volume;
+                }
+                localStorage.setItem('quantum-jump-volume', this.volume.toString());
+            }
+        }
+
+        const soundEngine = new SoundEngine();
+
+        // 🚀 CRITICAL FIX: Object Pooled Particle System with Memory Management
+        class ParticlePool {
+            constructor(initialSize = 50) {
+                this.pool = [];
+                this.active = [];
+                this.maxPoolSize = 100;
+                this.particleLimit = GAME_CONFIG.particleLimit;
+                
+                // Pre-allocate particle DOM elements
+                this.initializePool(initialSize);
+            }
+            
+            initializePool(size) {
+                for (let i = 0; i < size; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.position = 'absolute';
+                    particle.style.pointerEvents = 'none';
+                    particle.style.zIndex = '800';
+                    particle.style.borderRadius = '50%';
+                    particle.style.willChange = 'transform, opacity';
+                    particle.style.display = 'none'; // Initially hidden
+                    this.pool.push(particle);
+                }
+            }
+            
+            acquire() {
+                if (this.active.length >= this.particleLimit) {
+                    // Return oldest active particle for reuse
+                    return this.release(this.active[0]);
+                }
+                
+                let particle = this.pool.pop();
+                if (!particle) {
+                    // Create new particle if pool is empty
+                    particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.position = 'absolute';
+                    particle.style.pointerEvents = 'none';
+                    particle.style.zIndex = '800';
+                    particle.style.borderRadius = '50%';
+                    particle.style.willChange = 'transform, opacity';
+                }
+                
+                this.active.push(particle);
+                particle.style.display = 'block';
+                return particle;
+            }
+            
+            release(particle) {
+                const index = this.active.indexOf(particle);
+                if (index > -1) {
+                    this.active.splice(index, 1);
+                    
+                    // Reset particle state
+                    particle.style.display = 'none';
+                    particle.style.animation = '';
+                    particle.style.transform = '';
+                    particle.style.opacity = '1';
+                    particle.className = 'particle';
+                    
+                    // Clear any custom CSS properties
+                    particle.style.removeProperty('--spread');
+                    
+                    // Return to pool if under max size
+                    if (this.pool.length < this.maxPoolSize) {
+                        this.pool.push(particle);
+                    }
+                    
+                    // Remove from DOM if attached
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }
+                return particle;
+            }
+            
+            cleanup() {
+                // Clean up expired particles
+                this.active = this.active.filter(particle => {
+                    const animationName = particle.style.animationName;
+                    const isExpired = !animationName || 
+                                    particle.style.display === 'none' ||
+                                    !particle.parentNode;
+                    
+                    if (isExpired) {
+                        this.release(particle);
+                        return false;
+                    }
+                    return true;
+                });
+            }
+            
+            clear() {
+                // Release all active particles
+                [...this.active].forEach(particle => this.release(particle));
+                this.active.length = 0;
+            }
+            
+            getStats() {
+                return {
+                    active: this.active.length,
+                    pooled: this.pool.length,
+                    total: this.active.length + this.pool.length
+                };
+            }
+        }
+
+        // 🚀 CRITICAL FIX: Enhanced Particle System with Object Pooling
+        class ParticleSystem {
+            constructor() {
+                this.pool = new ParticlePool(30);
+                this.batchUpdateId = null;
+                this.particles = new Set();
+            }
+            
+            static getInstance() {
+                if (!ParticleSystem.instance) {
+                    ParticleSystem.instance = new ParticleSystem();
+                }
+                return ParticleSystem.instance;
+            }
+            
+            createJumpParticles(x, y) {
+                if (this.pool.active.length >= GAME_CONFIG.particleLimit) return;
+                
+                const particleCount = Math.min(6, GAME_CONFIG.particleLimit - this.pool.active.length);
+                const particlesToCreate = [];
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = this.pool.acquire();
+                    
+                    // Set particle properties for jump effect
+                    particle.className = 'particle jump-particle';
+                    particle.style.width = '3px';
+                    particle.style.height = '3px';
+                    particle.style.background = 'var(--primary-color)';
+                    particle.style.boxShadow = '0 0 6px var(--primary-color)';
+                    particle.style.left = (x + Math.random() * 16 - 8) + 'px';
+                    particle.style.top = (y + Math.random() * 8 - 4) + 'px';
+                    particle.style.animation = 'jumpParticleAnim 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                    
+                    particlesToCreate.push({
+                        element: particle,
+                        duration: 600,
+                        startTime: performance.now()
+                    });
+                }
+                
+                this.batchAddParticles(particlesToCreate);
+            }
+
+            createLandParticles(x, y) {
+                if (this.pool.active.length >= GAME_CONFIG.particleLimit) return;
+                
+                const particleCount = Math.min(8, GAME_CONFIG.particleLimit - this.pool.active.length);
+                const particlesToCreate = [];
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = this.pool.acquire();
+                    const spread = (Math.random() - 0.5) * 50;
+                    
+                    // Set particle properties for land effect
+                    particle.className = 'particle land-particle';
+                    particle.style.width = '4px';
+                    particle.style.height = '4px';
+                    particle.style.background = 'var(--accent-color)';
+                    particle.style.boxShadow = '0 0 8px var(--accent-color)';
+                    particle.style.setProperty('--spread', spread + 'px');
+                    particle.style.left = (x + Math.random() * 16 - 8) + 'px';
+                    particle.style.top = (y + 10) + 'px';
+                    particle.style.animation = 'landParticleAnim 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                    
+                    particlesToCreate.push({
+                        element: particle,
+                        duration: 400,
+                        startTime: performance.now()
+                    });
+                }
+                
+                this.batchAddParticles(particlesToCreate);
+            }
+
+            createSpringParticles(x, y) {
+                if (this.pool.active.length >= GAME_CONFIG.particleLimit) return;
+                
+                const particleCount = Math.min(10, GAME_CONFIG.particleLimit - this.pool.active.length);
+                const particlesToCreate = [];
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = this.pool.acquire();
+                    
+                    // Set particle properties for spring effect
+                    particle.className = 'particle';
+                    particle.style.width = '2px';
+                    particle.style.height = '2px';
+                    particle.style.background = 'var(--success-color)';
+                    particle.style.borderRadius = '50%';
+                    particle.style.left = (x + Math.random() * 30 - 15) + 'px';
+                    particle.style.top = (y + Math.random() * 8 - 4) + 'px';
+                    particle.style.boxShadow = '0 0 8px var(--success-color)';
+                    particle.style.animation = 'jumpParticleAnim 0.7s ease-out forwards';
+                    
+                    particlesToCreate.push({
+                        element: particle,
+                        duration: 700,
+                        startTime: performance.now()
+                    });
+                }
+                
+                this.batchAddParticles(particlesToCreate);
+            }
+            
+            batchAddParticles(particlesToCreate) {
+                if (particlesToCreate.length === 0) return;
+                
+                // Batch DOM operations using requestAnimationFrame
+                requestAnimationFrame(() => {
+                    const container = elements.particlesContainer;
+                    if (!container) return;
+                    
+                    // Add all particles to DOM in one batch
+                    particlesToCreate.forEach(({ element, duration, startTime }) => {
+                        container.appendChild(element);
+                        this.particles.add({
+                            element,
+                            duration,
+                            startTime,
+                            id: Symbol('particle')
+                        });
+                    });
+                    
+                    // Schedule cleanup
+                    this.scheduleCleanup();
+                });
+            }
+            
+            scheduleCleanup() {
+                if (this.batchUpdateId) return;
+                
+                this.batchUpdateId = requestAnimationFrame(() => {
+                    this.batchUpdateId = null;
+                    const currentTime = performance.now();
+                    const expiredParticles = [];
+                    
+                    this.particles.forEach(particle => {
+                        if (currentTime - particle.startTime >= particle.duration) {
+                            expiredParticles.push(particle);
+                        }
+                    });
+                    
+                    // Batch remove expired particles
+                    expiredParticles.forEach(particle => {
+                        this.particles.delete(particle);
+                        this.pool.release(particle.element);
+                    });
+                    
+                    // Schedule next cleanup if there are active particles
+                    if (this.particles.size > 0) {
+                        setTimeout(() => this.scheduleCleanup(), 100);
+                    }
+                });
+            }
+            
+            cleanup() {
+                this.pool.cleanup();
+                
+                // Clean up any orphaned particles
+                this.particles.forEach(particle => {
+                    if (!particle.element.parentNode) {
+                        this.particles.delete(particle);
+                    }
+                });
+            }
+            
+            clear() {
+                this.particles.clear();
+                this.pool.clear();
+                if (this.batchUpdateId) {
+                    cancelAnimationFrame(this.batchUpdateId);
+                    this.batchUpdateId = null;
+                }
+            }
+            
+            getStats() {
+                return {
+                    activeParticles: this.particles.size,
+                    poolStats: this.pool.getStats()
+                };
+            }
+        }
+
+        // Initialize particle system
+        const particleSystem = ParticleSystem.getInstance();
+
+        // Legacy ParticleSystem static methods for backward compatibility
+        ParticleSystem.createJumpParticles = (x, y) => particleSystem.createJumpParticles(x, y);
+        ParticleSystem.createLandParticles = (x, y) => particleSystem.createLandParticles(x, y);
+        ParticleSystem.createSpringParticles = (x, y) => particleSystem.createSpringParticles(x, y);
+
+        // Initialize physics engine with error handling
+        function initPhysics() {
+            try {
+                engine = Engine.create();
+                world = engine.world;
+                runner = Runner.create();
+                
+                engine.world.gravity.y = 1;
+                engine.world.gravity.x = 0;
+                
+                // 🚀 CRITICAL FIX: Enhanced collision detection with race condition prevention
+                Events.on(engine, 'collisionStart', function(event) {
+                    event.pairs.forEach(pair => {
+                        const { bodyA, bodyB } = pair;
+                        const currentTime = Date.now();
+                        
+                        // 🚀 PHYSICS RACE CONDITION FIX: Prevent overlapping physics modifications
+                        if (gameState.physicsLocked) return;
+                        
+                        // Ground detection with improved precision and state validation
+                        if ((bodyA.label === 'player' && bodyB.label === 'ground-sensor') ||
+                            (bodyB.label === 'player' && bodyA.label === 'ground-sensor')) {
+                            
+                            const groundSensor = bodyA.label === 'ground-sensor' ? bodyA : bodyB;
+                            const platformId = groundSensor.platformId || 'unknown';
+                            
+                            // 🚀 COLLISION STATE VALIDATION: Check if collision is valid
+                            if (!playerBody || !groundSensor) return;
+                            
+                            // Only register landing if player is moving downward or stationary
+                            if (playerBody.velocity.y > -3) {
+                                // Validate collision state before applying effects
+                                setTimeout(() => {
+                                    if (!playerBody || !groundSensor) return;
+                                    
+                                    gameState.canJump = true;
+                                    gameState.lastGroundedTime = currentTime;
+                                    gameState.collisionState.set(platformId, {
+                                        active: true,
+                                        timestamp: currentTime,
+                                        velocity: playerBody.velocity.y
+                                    });
+                                    
+                                    // Landing effects only if we were actually falling
+                                    if (playerBody.velocity.y > 2) {
+                                        soundEngine.land();
+                                        ParticleSystem.createLandParticles(playerBody.position.x, playerBody.position.y);
+                                        
+                                        // Reduced camera shake for smoother experience
+                                        const shakeIntensity = Math.min(playerBody.velocity.y * 0.3, 3);
+                                        cameraSystem.addShake(shakeIntensity, 100);
+                                    }
+                                }, GAME_CONFIG.collisionValidationDelay);
+                            }
+                        }
+                        
+                        // 🚀 SPRING PLATFORM RACE CONDITION FIX: Enhanced spring platform mechanics
+                        if ((bodyA.label === 'player' && bodyB.label === 'spring') ||
+                            (bodyB.label === 'player' && bodyA.label === 'spring')) {
+                            
+                            const springBody = bodyA.label === 'spring' ? bodyA : bodyB;
+                            const springId = springBody.platformId || springBody.id || 'unknown';
+                            
+                            // 🚀 SPRING COOLDOWN: Prevent double-trigger effects
+                            const lastSpringTime = gameState.collisionCooldowns.get(springId) || 0;
+                            if (currentTime - lastSpringTime < GAME_CONFIG.springCooldown) {
+                                return; // Skip if in cooldown
+                            }
+                            
+                            // Only trigger spring if player is falling and close to platform
+                            if (playerBody && playerBody.velocity.y > 0.5) {
+                                const playerPos = playerBody.position;
+                                const springPos = springBody.position;
+                                
+                                // More generous spring trigger area with boundary validation
+                                if (Math.abs(playerPos.x - springPos.x) < 60 && 
+                                    playerPos.y < springPos.y + 25 &&
+                                    playerPos.y > springPos.y - 25) {
+                                    
+                                    // Set cooldown immediately to prevent double-trigger
+                                    gameState.collisionCooldowns.set(springId, currentTime);
+                                    
+                                    // 🚀 STATE VALIDATION: Delayed execution with state validation
+                                    setTimeout(() => {
+                                        // Validate player and game state before applying spring effect
+                                        if (!playerBody || !gameState.isGameRunning || gameState.physicsLocked) {
+                                            return;
+                                        }
+                                        
+                                        // Lock physics during modification
+                                        gameState.physicsLocked = true;
+                                        
+                                        try {
+                                            // Super jump with enhanced power - preserve horizontal momentum
+                                            const horizontalBoost = Math.sign(playerBody.velocity.x) * 
+                                                                   Math.min(Math.abs(playerBody.velocity.x) * 1.2, 4);
+                                            
+                                            // Boundary check for velocity
+                                            const newVelocityX = Math.max(-10, Math.min(10, playerBody.velocity.x + horizontalBoost));
+                                            const newVelocityY = -24;
+                                            
+                                            Body.setVelocity(playerBody, { 
+                                                x: newVelocityX, 
+                                                y: newVelocityY 
+                                            });
+                                            
+                                            // Reset jump state to allow immediate control
+                                            gameState.canJump = false;
+                                            platformerPhysics.jumpCount = 0;
+                                            platformerPhysics.isJumping = true;
+                                            platformerPhysics.jumpStartTime = currentTime;
+                                            
+                                            soundEngine.spring();
+                                            ParticleSystem.createSpringParticles(playerBody.position.x, playerBody.position.y);
+                                            cameraSystem.addShake(2, 150);
+                                            
+                                            // Enhanced visual spring effect with validation
+                                            const springPlatform = platforms.find(p => p.body === springBody);
+                                            if (springPlatform && springPlatform.element && springPlatform.element.parentNode) {
+                                                springPlatform.element.style.transform = 'scaleY(0.6) translateY(5px)';
+                                                springPlatform.element.style.transition = 'transform 0.1s ease-out';
+                                                setTimeout(() => {
+                                                    if (springPlatform.element && springPlatform.element.parentNode) {
+                                                        springPlatform.element.style.transform = 'scaleY(1.1)';
+                                                        setTimeout(() => {
+                                                            if (springPlatform.element && springPlatform.element.parentNode) {
+                                                                springPlatform.element.style.transform = '';
+                                                                springPlatform.element.style.transition = '';
+                                                            }
+                                                        }, 150);
+                                                    }
+                                                }, 100);
+                                            }
+                                        } finally {
+                                            // Always unlock physics
+                                            gameState.physicsLocked = false;
+                                        }
+                                    }, 20);
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                Events.on(engine, 'collisionEnd', function(event) {
+                    event.pairs.forEach(pair => {
+                        const { bodyA, bodyB } = pair;
+                        
+                        // Ground detection end with improved stability
+                        if ((bodyA.label === 'player' && bodyB.label === 'ground-sensor') ||
+                            (bodyB.label === 'player' && bodyA.label === 'ground-sensor')) {
+                            
+                            const groundSensor = bodyA.label === 'ground-sensor' ? bodyA : bodyB;
+                            const platformId = groundSensor.platformId || 'unknown';
+                            
+                            // 🚀 COLLISION STATE CLEANUP
+                            gameState.collisionState.delete(platformId);
+                            
+                            // Immediate check if still touching any other ground sensors
+                            setTimeout(() => { 
+                                let stillGrounded = false;
+                                if (playerBody && platforms.length > 0 && !gameState.physicsLocked) {
+                                    try {
+                                        // Check collision with all existing ground sensors
+                                        const activeSensors = platforms.filter(p => p.sensor).map(p => p.sensor);
+                                        const collisions = Matter.Query.collides(playerBody, activeSensors);
+                                        stillGrounded = collisions.length > 0;
+                                    } catch (error) {
+                                        console.warn('Collision check failed:', error);
+                                        stillGrounded = false;
+                                    }
+                                }
+                                
+                                if (!stillGrounded && platformerPhysics.groundCheckDelay === 0) {
+                                    gameState.canJump = false;
+                                }
+                            }, GAME_CONFIG.groundCheckDelay);
+                        }
+                    });
+                });
+
+                return true;
+            } catch (error) {
+                throw new GameError('Physics initialization failed', { error });
+            }
+        }
+
+        // Create player with enhanced properties
+        function createPlayer() {
+            try {
+                const startX = GAME_CONFIG.gameWidth / 2;
+                const startY = GAME_CONFIG.gameHeight - 150;
+                
+                playerBody = Bodies.circle(startX, startY, 12, {
+                    restitution: 0,
+                    friction: 0.6,
+                    frictionAir: 0.015,
+                    frictionStatic: 0.8,
+                    density: 0.001,
+                    label: 'player'
+                });
+                
+                World.add(world, playerBody);
+                return true;
+            } catch (error) {
+                throw new GameError('Player creation failed', { error });
+            }
+        }
+
+        // Enhanced platform creation with better distribution
+        function createPlatform(x, y, type, width, id = null) {
+            try {
+                const platformWidth = Math.max(GAME_CONFIG.minPlatformWidth, width * 18);
+                const platformHeight = 16;
+                
+                // Physics body with proper collision properties
+                const platformBody = Bodies.rectangle(x + platformWidth/2, y + platformHeight/2, platformWidth, platformHeight, {
+                    isStatic: true,
+                    friction: 0.8,
+                    restitution: 0,
+                    label: type === 'spring' ? 'spring' : 'platform',
+                    platformId: id // Store platform ID for collision tracking
+                });
+                
+                // Enhanced ground sensor for more precise detection
+                const sensorBody = Bodies.rectangle(x + platformWidth/2, y - 1, platformWidth + 4, 6, {
+                    isStatic: true,
+                    isSensor: true,
+                    label: 'ground-sensor',
+                    platformId: id // Store platform ID for collision tracking
+                });
+                
+                World.add(world, [platformBody, sensorBody]);
+                
+                // Visual element with better styling
+                const element = document.createElement('div');
+                element.className = `platform ${type}`;
+                element.textContent = (type === 'spring' ? '↑' : '═').repeat(Math.max(3, Math.floor(width)));
+                element.style.left = x + 'px';
+                element.style.top = y + 'px';
+                element.style.width = platformWidth + 'px';
+                element.style.height = platformHeight + 'px';
+                
+                elements.platformsContainer.appendChild(element);
+                platforms.push({ element, body: platformBody, sensor: sensorBody, x, y, type, id, width: platformWidth });
+                
+                return true;
+            } catch (error) {
+                console.warn('Platform creation failed:', error);
+                return false;
+            }
+        }
+
+        // Enhanced chunk-based platform generation system
+        class ChunkManager {
+            constructor() {
+                this.chunks = new Map();
+                this.loadedChunks = new Set();
+                this.platformCount = 0;
+            }
+            
+            getChunkId(height) {
+                return Math.floor(height / GAME_CONFIG.chunkHeight);
+            }
+            
+            generateChunk(chunkId) {
+                if (this.chunks.has(chunkId)) return this.chunks.get(chunkId);
+                
+                const platforms = [];
+                const baseY = GAME_CONFIG.gameHeight - 80 - (chunkId * GAME_CONFIG.chunkHeight);
+                const chunkHeight = GAME_CONFIG.chunkHeight;
+                const platformSpacing = chunkHeight / GAME_CONFIG.chunkSize;
+                
+                for (let i = 0; i < GAME_CONFIG.chunkSize; i++) {
+                    const platformIndex = chunkId * GAME_CONFIG.chunkSize + i;
+                    
+                    // Better platform positioning with guaranteed reachability
+                    const y = baseY - (i * platformSpacing) - (Math.random() * 20 - 10);
+                    const x = this.generateReachablePlatformX(platforms, i);
+                    
+                    let type = 'normal';
+                    if (platformIndex % 15 === 0 && platformIndex > 0) type = 'spring';
+                    else if (platformIndex > 20 && Math.random() < 0.12) type = 'spring';
+                    
+                    const width = this.generatePlatformWidth(platformIndex);
+                    platforms.push({ x, y, type, width, id: platformIndex });
+                }
+                
+                this.chunks.set(chunkId, platforms);
+                return platforms;
+            }
+            
+            generateReachablePlatformX(existingPlatforms, currentIndex) {
+                const gameWidth = GAME_CONFIG.gameWidth;
+                const maxJumpDistance = 180; // Maximum horizontal jump distance
+                
+                if (currentIndex === 0 || existingPlatforms.length === 0) {
+                    // First platform in chunk - place randomly but not too close to edges
+                    return Math.random() * (gameWidth - 200) + 100;
+                }
+                
+                // Get previous platform position
+                const prevPlatform = existingPlatforms[existingPlatforms.length - 1];
+                const prevX = prevPlatform.x + (prevPlatform.width * 18) / 2; // Center of previous platform
+                
+                // Generate position within jump range but with some randomness
+                const minX = Math.max(50, prevX - maxJumpDistance * 0.8);
+                const maxX = Math.min(gameWidth - 100, prevX + maxJumpDistance * 0.8);
+                
+                return minX + Math.random() * (maxX - minX);
+            }
+            
+            generatePlatformWidth(index) {
+                // More generous platform sizes with gradual difficulty
+                const difficultyFactor = Math.min(index / 200, 0.4);
+                const baseSize = 6; // Larger base size
+                
+                if (index < 10) return 8; // Tutorial platforms are larger
+                if (Math.random() < 0.7 - difficultyFactor) return baseSize;
+                if (Math.random() < 0.8) return baseSize - 1;
+                return Math.max(4, baseSize - 2);
+            }
+            
+            loadChunk(chunkId) {
+                if (this.loadedChunks.has(chunkId)) return;
+                
+                const platforms = this.generateChunk(chunkId);
+                platforms.forEach(platformData => {
+                    createPlatform(platformData.x, platformData.y, platformData.type, platformData.width, platformData.id);
+                });
+                
+                this.loadedChunks.add(chunkId);
+            }
+            
+            unloadChunk(chunkId) {
+                if (!this.loadedChunks.has(chunkId)) return;
+                
+                const platforms = this.chunks.get(chunkId);
+                if (platforms) {
+                    platforms.forEach(platformData => {
+                        this.removePlatformById(platformData.id);
+                    });
+                }
+                
+                this.loadedChunks.delete(chunkId);
+            }
+            
+            removePlatformById(id) {
+                platforms = platforms.filter(platform => {
+                    if (platform.id === id) {
+                        World.remove(world, [platform.body, platform.sensor]);
+                        if (platform.element && platform.element.parentNode) {
+                            platform.element.parentNode.removeChild(platform.element);
+                        }
+                        // Clean up collision state
+                        gameState.collisionState.delete(id);
+                        gameState.collisionCooldowns.delete(id);
+                        return false;
+                    }
+                    return true;
+                });
+            }
+            
+            updateChunks(playerHeight) {
+                const currentChunk = this.getChunkId(playerHeight);
+                
+                // Load chunks ahead
+                for (let i = currentChunk; i <= currentChunk + GAME_CONFIG.generationAhead; i++) {
+                    this.loadChunk(i);
+                }
+                
+                // Unload chunks behind
+                const chunksToUnload = [];
+                this.loadedChunks.forEach(chunkId => {
+                    if (chunkId < currentChunk - 1) {
+                        chunksToUnload.push(chunkId);
+                    }
+                });
+                
+                chunksToUnload.forEach(chunkId => this.unloadChunk(chunkId));
+            }
+        }
+        
+        const chunkManager = new ChunkManager();
+        
+        // Enhanced platform generation with better spacing
+        function generateInitialPlatforms() {
+            try {
+                // Starting platform
+                createPlatform(GAME_CONFIG.gameWidth / 2 - 80, GAME_CONFIG.gameHeight - 80, 'normal', 8, 0);
+                
+                // Load initial chunks
+                for (let i = 0; i <= GAME_CONFIG.generationAhead; i++) {
+                    chunkManager.loadChunk(i);
+                }
+                
+                return true;
+            } catch (error) {
+                throw new GameError('Platform generation failed', { error });
+            }
+        }
+
+        // Professional platformer physics system with enhanced features
+        class PlatformerPhysics {
+            constructor() {
+                this.coyoteTimer = 0;
+                this.jumpBufferTimer = 0;
+                this.isJumping = false;
+                this.jumpStartTime = 0;
+                this.wasGrounded = false;
+                this.jumpCount = 0;
+                this.groundCheckDelay = 0;
+                this.jumpChargeAmount = 0;
+                this.maxJumpCharge = GAME_CONFIG.jumpChargeTime || 250;
+                this.isChargingJump = false;
+                this.lastLandingVelocity = 0;
+            }
+            
+            update(deltaTime = 16.67) {
+                const currentTime = Date.now();
+                
+                // Update timers
+                this.coyoteTimer = Math.max(0, this.coyoteTimer - deltaTime);
+                this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - deltaTime);
+                this.groundCheckDelay = Math.max(0, this.groundCheckDelay - deltaTime);
+                
+                // Update jump charge if charging
+                if (this.isChargingJump) {
+                    this.updateJumpCharge();
+                }
+                
+                // Check if we just left the ground (start coyote time)
+                if (this.wasGrounded && !gameState.canJump && this.groundCheckDelay === 0) {
+                    this.coyoteTimer = GAME_CONFIG.coyoteTime;
+                }
+                this.wasGrounded = gameState.canJump;
+                
+                // Reset jump count when grounded
+                if (gameState.canJump) {
+                    this.jumpCount = 0;
+                }
+                
+                // Enhanced variable jump height
+                if (this.isJumping && playerBody) {
+                    const jumpDuration = currentTime - this.jumpStartTime;
+                    const maxJumpTime = 350;
+                    
+                    // More responsive jump control
+                    const isJumpHeld = gameState.keys['Space'] || gameState.keys['ArrowUp'];
+                    
+                    if (!isJumpHeld || jumpDuration > maxJumpTime) {
+                        if (playerBody.velocity.y < -2) {
+                            Body.setVelocity(playerBody, {
+                                x: playerBody.velocity.x,
+                                y: playerBody.velocity.y * GAME_CONFIG.variableJumpFactor
+                            });
+                        }
+                        this.isJumping = false;
+                    }
+                }
+                
+                // Process buffered jump if we land or in coyote time
+                if (this.jumpBufferTimer > 0 && (gameState.canJump || this.coyoteTimer > 0)) {
+                    this.executeJump();
+                    this.jumpBufferTimer = 0;
+                }
+            }
+            
+            requestJump() {
+                const currentTime = Date.now();
+                
+                // Start charging jump if not already jumping
+                if (!this.isChargingJump && !this.isJumping) {
+                    this.startJumpCharge();
+                }
+                
+                // Immediate jump if grounded or in coyote time
+                if ((gameState.canJump || this.coyoteTimer > 0) && 
+                    currentTime - gameState.lastJumpTime > 80 && this.jumpCount === 0) {
+                    this.executeJump();
+                } else {
+                    // Buffer the jump input for more responsive feel
+                    this.jumpBufferTimer = GAME_CONFIG.jumpBufferTime;
+                }
+            }
+            
+            startJumpCharge() {
+                if (!this.isChargingJump) {
+                    this.isChargingJump = true;
+                    gameState.jumpChargeStartTime = Date.now();
+                    this.jumpChargeAmount = 0;
+                    
+                    // Show charge indicator
+                    if (elements.jumpChargeIndicator) {
+                        elements.jumpChargeIndicator.classList.add('visible');
+                    }
+                }
+            }
+            
+            updateJumpCharge() {
+                if (this.isChargingJump && gameState.jumpChargeStartTime > 0) {
+                    const currentTime = Date.now();
+                    const chargeTime = currentTime - gameState.jumpChargeStartTime;
+                    this.jumpChargeAmount = Math.min(chargeTime / this.maxJumpCharge, 1.0);
+                    
+                    // Update visual indicator
+                    if (elements.jumpChargeFill) {
+                        elements.jumpChargeFill.style.width = (this.jumpChargeAmount * 100) + '%';
+                    }
+                }
+            }
+            
+            releaseJump() {
+                if (this.isChargingJump) {
+                    this.isChargingJump = false;
+                    
+                    // Hide charge indicator
+                    if (elements.jumpChargeIndicator) {
+                        elements.jumpChargeIndicator.classList.remove('visible');
+                    }
+                    
+                    // Reset charge fill
+                    if (elements.jumpChargeFill) {
+                        elements.jumpChargeFill.style.width = '0%';
+                    }
+                }
+            }
+            
+            executeJump() {
+                if (!playerBody || gameState.physicsLocked) return;
+                
+                const currentTime = Date.now();
+                
+                // More lenient jump velocity check
+                if (playerBody.velocity.y >= -3 && this.jumpCount === 0) {
+                    // Calculate jump power based on charge amount
+                    const baseJumpPower = GAME_CONFIG.jumpPower;
+                    const chargeBonus = this.jumpChargeAmount * (baseJumpPower * 0.4); // Up to 40% bonus
+                    const totalJumpPower = baseJumpPower + chargeBonus;
+                    
+                    Body.setVelocity(playerBody, { 
+                        x: playerBody.velocity.x, 
+                        y: -totalJumpPower
+                    });
+                    
+                    gameState.canJump = false;
+                    gameState.lastJumpTime = currentTime;
+                    this.coyoteTimer = 0;
+                    this.isJumping = true;
+                    this.jumpStartTime = currentTime;
+                    this.jumpCount = 1;
+                    this.groundCheckDelay = 100;
+                    
+                    // Achievement tracking
+                    if (!gameState.achievements.firstJump) {
+                        gameState.achievements.firstJump = true;
+                        this.showAchievement('First Jump!', 'You\'ve mastered the basics');
+                    }
+                    
+                    // Enhanced sound based on charge
+                    if (this.jumpChargeAmount > 0.7) {
+                        soundEngine.chargedJump();
+                    } else {
+                        soundEngine.jump();
+                    }
+                    
+                    // Enhanced particles based on jump power
+                    const particleCount = Math.floor(6 + (this.jumpChargeAmount * 4));
+                    ParticleSystem.createJumpParticles(playerBody.position.x, playerBody.position.y, particleCount);
+                    
+                    // Camera shake based on jump power
+                    const shakeIntensity = 1.5 + (this.jumpChargeAmount * 1.5);
+                    cameraSystem.addShake(shakeIntensity, 150);
+                    
+                    // Visual feedback with charge indication
+                    elements.player.classList.add('jumping');
+                    if (this.jumpChargeAmount > 0.5) {
+                        elements.player.style.filter = 'brightness(1.5) drop-shadow(0 0 20px var(--primary-color))';
+                        setTimeout(() => {
+                            elements.player.style.filter = '';
+                        }, 400);
+                    }
+                    setTimeout(() => elements.player.classList.remove('jumping'), 300);
+                    
+                    // Release jump charge
+                    this.releaseJump();
+                }
+            }
+            
+            showAchievement(title, description) {
+                // Create achievement notification
+                const achievement = document.createElement('div');
+                achievement.className = 'achievement-popup';
+                achievement.innerHTML = `
+                    <div class="achievement-title">${title}</div>
+                    <div class="achievement-description">${description}</div>
+                `;
+                achievement.style.cssText = `
+                    position: fixed;
+                    top: 50px;
+                    right: 20px;
+                    background: var(--glass-bg);
+                    padding: 1rem;
+                    border-radius: 8px;
+                    border: 1px solid var(--success-color);
+                    color: var(--success-color);
+                    z-index: 300;
+                    animation: achievementSlideIn 0.5s ease;
+                `;
+                
+                document.body.appendChild(achievement);
+                
+                setTimeout(() => {
+                    achievement.remove();
+                }, 3000);
+            }
+            
+            reset() {
+                this.coyoteTimer = 0;
+                this.jumpBufferTimer = 0;
+                this.isJumping = false;
+                this.jumpStartTime = 0;
+                this.wasGrounded = false;
+                this.jumpCount = 0;
+                this.groundCheckDelay = 0;
+                this.jumpChargeAmount = 0;
+                this.isChargingJump = false;
+                this.lastLandingVelocity = 0;
+                this.releaseJump();
+            }
+        }
+        
+        const platformerPhysics = new PlatformerPhysics();
+        
+        // Enhanced jump function with professional platformer mechanics
+        function jump() {
+            platformerPhysics.requestJump();
+        }
+
+        // Enhanced movement with better physics
+        function updateMovement() {
+            if (!playerBody) return;
+            
+            let inputForce = 0;
+            if (gameState.keys['ArrowLeft'] || gameState.keys['KeyA']) inputForce = -1;
+            if (gameState.keys['ArrowRight'] || gameState.keys['KeyD']) inputForce = 1;
+            
+            if (inputForce !== 0) {
+                // Different force based on whether player is grounded or in air
+                const baseForce = gameState.canJump ? 0.004 : 0.004 * GAME_CONFIG.airControl;
+                const forceX = inputForce * baseForce;
+                
+                // Apply acceleration curve - faster initial acceleration, then tapering
+                const currentSpeed = Math.abs(playerBody.velocity.x);
+                const speedRatio = currentSpeed / GAME_CONFIG.maxHorizontalVelocity;
+                const accelerationMultiplier = Math.max(0.3, 1 - speedRatio * 0.7);
+                
+                Body.applyForce(playerBody, playerBody.position, { 
+                    x: forceX * accelerationMultiplier, 
+                    y: 0 
+                });
+            } else if (gameState.canJump) {
+                // Ground friction when no input
+                const friction = 0.85;
+                Body.setVelocity(playerBody, { 
+                    x: playerBody.velocity.x * friction, 
+                    y: playerBody.velocity.y 
+                });
+            }
+            
+            // Enhanced velocity limits
+            const maxVelocity = GAME_CONFIG.maxHorizontalVelocity;
+            if (Math.abs(playerBody.velocity.x) > maxVelocity) {
+                Body.setVelocity(playerBody, { 
+                    x: Math.sign(playerBody.velocity.x) * maxVelocity, 
+                    y: playerBody.velocity.y 
+                });
+            }
+            
+            // Smooth screen wrapping instead of hard bounds
+            const padding = 20;
+            if (playerBody.position.x < -padding) {
+                Body.setPosition(playerBody, { x: GAME_CONFIG.gameWidth + padding, y: playerBody.position.y });
+            } else if (playerBody.position.x > GAME_CONFIG.gameWidth + padding) {
+                Body.setPosition(playerBody, { x: -padding, y: playerBody.position.y });
+            }
+        }
+
+        // Professional camera system with deadzone, look-ahead, and smooth movement
+        class CameraSystem {
+            constructor() {
+                this.position = { x: 0, y: 0 };
+                this.target = { x: 0, y: 0 };
+                this.velocity = { x: 0, y: 0 };
+                this.shake = { x: 0, y: 0, intensity: 0, duration: 0 };
+                this.previousPlayerPos = { x: 0, y: 0 };
+            }
+            
+            update(player, deltaTime = 16.67) {
+                if (!player) return { x: this.position.x, y: this.position.y };
+                
+                const playerPos = player.position;
+                const playerVel = player.velocity;
+                
+                // Smooth look-ahead based on actual movement, not just velocity
+                const actualVelX = (playerPos.x - this.previousPlayerPos.x) * (1000 / deltaTime);
+                const actualVelY = (playerPos.y - this.previousPlayerPos.y) * (1000 / deltaTime);
+                this.previousPlayerPos = { x: playerPos.x, y: playerPos.y };
+                
+                // Calculate target position with smarter look-ahead
+                const lookAheadX = Math.sign(actualVelX) * Math.min(Math.abs(actualVelX) * 8, GAME_CONFIG.cameraLookAhead);
+                const lookAheadY = playerVel.y < 0 ? Math.min(Math.abs(playerVel.y) * 3, GAME_CONFIG.cameraLookAhead * 0.3) : 0;
+                
+                // Target calculation - keep player slightly below center for better upward view
+                this.target.x = GAME_CONFIG.gameWidth / 2 - playerPos.x - lookAheadX;
+                this.target.y = Math.min(0, GAME_CONFIG.gameHeight * 0.6 - playerPos.y - lookAheadY);
+                
+                // Enhanced deadzone with hysteresis to prevent jitter
+                const deadzoneX = GAME_CONFIG.cameraDeadzone;
+                const currentPlayerScreenX = playerPos.x + this.position.x;
+                const screenCenterX = GAME_CONFIG.gameWidth / 2;
+                const offsetFromCenter = currentPlayerScreenX - screenCenterX;
+                
+                // Only update X target if player is outside deadzone or moving away from center
+                if (Math.abs(offsetFromCenter) < deadzoneX && Math.abs(actualVelX) < 1) {
+                    this.target.x = this.position.x;
+                }
+                
+                // Adaptive smoothing - faster when far from target, slower when close
+                const distanceX = Math.abs(this.target.x - this.position.x);
+                const distanceY = Math.abs(this.target.y - this.position.y);
+                
+                const smoothnessX = Math.min(GAME_CONFIG.cameraSmoothness * (1 + distanceX / 300), 0.25);
+                const smoothnessY = Math.min(GAME_CONFIG.cameraSmoothness * (1 + distanceY / 200), 0.2);
+                
+                // Update camera velocity with different smoothing for X and Y
+                this.velocity.x = (this.target.x - this.position.x) * smoothnessX;
+                this.velocity.y = (this.target.y - this.position.y) * smoothnessY;
+                
+                // Apply velocity with frame-rate independent movement
+                const frameMultiplier = Math.min(deltaTime / 16.67, 2); // Cap multiplier to prevent jumps
+                this.position.x += this.velocity.x * frameMultiplier;
+                this.position.y += this.velocity.y * frameMultiplier;
+                
+                // Update camera shake with reduced intensity
+                this.updateShake(deltaTime);
+                
+                // Apply final position with shake
+                const finalX = this.position.x + this.shake.x;
+                const finalY = this.position.y + this.shake.y;
+                
+                return { x: finalX, y: finalY };
+            }
+            
+            updateShake(deltaTime) {
+                if (this.shake.duration <= 0) {
+                    this.shake.x = 0;
+                    this.shake.y = 0;
+                    return;
+                }
+                
+                this.shake.duration -= deltaTime;
+                const intensity = Math.min(this.shake.intensity * (this.shake.duration / 1000), GAME_CONFIG.maxCameraShake);
+                
+                this.shake.x = (Math.random() - 0.5) * intensity;
+                this.shake.y = (Math.random() - 0.5) * intensity;
+            }
+            
+            addShake(intensity, duration) {
+                // Limit shake intensity to prevent disorienting camera movement
+                const limitedIntensity = Math.min(intensity, GAME_CONFIG.maxCameraShake);
+                this.shake.intensity = Math.max(this.shake.intensity, limitedIntensity);
+                this.shake.duration = Math.max(this.shake.duration, duration);
+            }
+            
+            reset() {
+                this.position = { x: 0, y: 0 };
+                this.target = { x: 0, y: 0 };
+                this.velocity = { x: 0, y: 0 };
+                this.shake = { x: 0, y: 0, intensity: 0, duration: 0 };
+                this.previousPlayerPos = { x: 0, y: 0 };
+            }
+        }
+        
+        const cameraSystem = new CameraSystem();
+        
+        // Enhanced camera with smoother movement
+        function updateCamera() {
+            if (!playerBody) return;
+            
+            const cameraPos = cameraSystem.update(playerBody);
+            
+            // Update player visual position
+            elements.player.style.left = (playerBody.position.x - 12) + 'px';
+            elements.player.style.top = (playerBody.position.y - 12 + cameraPos.y) + 'px';
+            
+            // Update platforms position
+            platforms.forEach(platform => {
+                platform.element.style.transform = `translateY(${cameraPos.y}px)`;
+            });
+            
+            // Update particles container
+            elements.particlesContainer.style.transform = `translateY(${cameraPos.y}px)`;
+            
+            // Store camera position for other systems
+            gameState.camera.y = cameraPos.y;
+        }
+
+        // Enhanced score system with achievements
+        function updateScore() {
+            if (!playerBody) return;
+            
+            const height = Math.max(0, Math.floor((GAME_CONFIG.gameHeight - playerBody.position.y) / 8));
+            if (height > gameState.score.height) {
+                const previousHeight = gameState.score.height;
+                gameState.score.height = height;
+                elements.heightScore.textContent = height + 'm';
+                
+                // Update progress bar (cycles every 1000m for infinite feel)
+                const cycleHeight = height % 1000;
+                const progress = (cycleHeight / 1000) * 100;
+                elements.heightFill.style.width = progress + '%';
+                
+                // Update chunk-based platform generation
+                chunkManager.updateChunks(height * 8);
+                
+                // Achievement milestones
+                const milestones = [500, 1000, 2000, 5000, 10000];
+                const reachedMilestone = milestones.find(milestone => 
+                    previousHeight < milestone && height >= milestone
+                );
+                
+                if (reachedMilestone) {
+                    soundEngine.achievement();
+                }
+                
+                // Dynamic background based on height with smoother transitions
+                const hue = Math.min(300, 240 - height / 80);
+                const saturation = Math.min(80, 60 + height / 500);
+                const lightness = Math.max(2, 8 - height / 1500);
+                document.body.style.background = `radial-gradient(ellipse at center, 
+                    hsl(${hue}, ${saturation}%, ${lightness}%) 0%, 
+                    hsl(${hue - 15}, ${saturation + 10}%, ${lightness - 1}%) 100%)`;
+                    
+                // Subtle atmosphere effects at different heights
+                if (height % 1000 === 0 && height > 0) {
+                    // Milestone celebration effect
+                    document.body.style.filter = 'brightness(1.2) saturate(1.3)';
+                    setTimeout(() => {
+                        document.body.style.filter = '';
+                    }, 1000);
+                }
+            }
+            
+            // Enhanced game over detection with grace period
+            if (playerBody.position.y > GAME_CONFIG.gameHeight + 300) {
+                gameOver();
+            }
+            
+            // Warning effects when player is falling too far
+            if (playerBody.position.y > GAME_CONFIG.gameHeight + 100 && playerBody.velocity.y > 5) {
+                // Red screen edge effect
+                if (!document.body.classList.contains('danger-warning')) {
+                    document.body.classList.add('danger-warning');
+                    setTimeout(() => document.body.classList.remove('danger-warning'), 2000);
+                }
+            }
+        }
+        
+        // Legacy platform generation functions removed - now using ChunkManager
+
+        // Enhanced game over with better UX
+        function gameOver() {
+            gameState.isGameRunning = false;
+            gameState.currentState = 'gameOver';
+            
+            if (runner) Runner.stop(runner);
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                gameLoopId = null;
+            }
+            
+            soundEngine.gameOver();
+            
+            elements.finalScore.textContent = gameState.score.height + 'm';
+            
+            if (gameState.score.height > gameState.score.best) {
+                gameState.score.best = gameState.score.height;
+                localStorage.setItem('quantum-jump-best', gameState.score.best);
+                elements.newRecord.classList.remove('hidden');
+                elements.bestScore.textContent = 'Best: ' + gameState.score.best + 'm';
+            } else {
+                elements.newRecord.classList.add('hidden');
+            }
+            
+            setTimeout(() => {
+                elements.gameOverScreen.classList.remove('hidden');
+                
+                // Add game over visual effects
+                document.body.style.filter = 'brightness(0.7) saturate(0.5)';
+                setTimeout(() => {
+                    document.body.style.filter = '';
+                }, 2000);
+            }, 500);
+        }
+
+        // Enhanced game reset with system cleanup
+        function resetGame() {
+            try {
+                if (world) {
+                    World.clear(world);
+                    Engine.clear(engine);
+                }
+                
+                // Reset all game systems
+                gameState.camera.y = 0;
+                gameState.score.height = 0;
+                gameState.canJump = false;
+                gameState.lastJumpTime = 0;
+                gameState.particleCount = 0;
+                gameState.lastGroundedTime = 0;
+                gameState.jumpBufferTime = 0;
+                gameState.isJumping = false;
+                gameState.jumpHoldTime = 0;
+                gameState.currentChunk = 0;
+                gameState.loadedChunks.clear();
+                gameState.platformChunks.clear();
+                
+                // 🚀 CRITICAL FIX: Reset physics race condition prevention state
+                gameState.lastSpringTime = 0;
+                gameState.collisionState.clear();
+                gameState.physicsLocked = false;
+                gameState.collisionCooldowns.clear();
+                
+                platforms = [];
+                lastGeneratedHeight = 0;
+                lastFrameTime = performance.now();
+                
+                // Reset subsystems
+                cameraSystem.reset();
+                platformerPhysics.reset();
+                chunkManager.chunks.clear();
+                chunkManager.loadedChunks.clear();
+                
+                // 🚀 CRITICAL FIX: Clear particle system with object pooling
+                particleSystem.clear();
+                
+                while (elements.platformsContainer.firstChild) { elements.platformsContainer.removeChild(elements.platformsContainer.firstChild); }
+                while (elements.particlesContainer.firstChild) { elements.particlesContainer.removeChild(elements.particlesContainer.firstChild); }
+                elements.heightScore.textContent = '0m';
+                elements.heightFill.style.width = '0%';
+                elements.player.classList.remove('jumping');
+                
+                // Reset background
+                document.body.style.background = 'radial-gradient(ellipse at center, var(--bg-dark) 0%, var(--bg-darker) 100%)';
+                
+                return true;
+            } catch (error) {
+                throw new GameError('Game reset failed', { error });
+            }
+        }
+
+        // Enhanced game start
+        async function startGame() {
+            try {
+                gameState.currentState = 'playing';
+                elements.menuScreen.classList.add('hidden');
+                elements.gameOverScreen.classList.add('hidden');
+                
+                // Initialize audio on user interaction
+                await soundEngine.resumeContext();
+                
+                resetGame();
+                createPlayer();
+                generateInitialPlatforms();
+                
+                Runner.run(runner, engine);
+                gameState.isGameRunning = true;
+                
+                // Smooth game start transition
+                elements.player.style.opacity = '0';
+                elements.player.style.transform = 'scale(0.5)';
+                setTimeout(() => {
+                    elements.player.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    elements.player.style.opacity = '1';
+                    elements.player.style.transform = 'scale(1)';
+                    setTimeout(() => {
+                        elements.player.style.transition = '';
+                    }, 500);
+                }, 100);
+                
+                gameLoop();
+            } catch (error) {
+                console.error('Failed to start game:', error);
+                showMenu();
+            }
+        }
+
+        // Enhanced tutorial system
+        function showTutorial() {
+            gameState.currentState = 'tutorial';
+            gameState.currentTutorialStep = 1;
+            
+            elements.menuScreen.classList.add('hidden');
+            elements.tutorialScreen.classList.remove('hidden');
+            
+            // Animate tutorial steps
+            animateTutorialSteps();
+        }
+        
+        function animateTutorialSteps() {
+            const steps = document.querySelectorAll('.tutorial-step');
+            steps.forEach((step, index) => {
+                step.style.animationDelay = (index * 0.3) + 's';
+                step.classList.add('active');
+            });
+        }
+        
+        function closeTutorial() {
+            elements.tutorialScreen.classList.add('hidden');
+            elements.menuScreen.classList.remove('hidden');
+            gameState.currentState = 'menu';
+        }
+        
+        // Enhanced debug mode
+        function toggleDebugMode() {
+            gameState.debugMode = !gameState.debugMode;
+            
+            if (gameState.debugMode) {
+                elements.fpsCounter.style.display = 'block';
+                console.log('Debug mode enabled');
+                
+                // Add debug info to the UI
+                const debugInfo = document.createElement('div');
+                debugInfo.id = 'debug-info';
+                debugInfo.style.cssText = `
+                    position: fixed;
+                    bottom: 10px;
+                    left: 10px;
+                    background: var(--glass-bg);
+                    padding: 10px;
+                    border-radius: 5px;
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 0.7rem;
+                    z-index: 300;
+                    pointer-events: none;
+                    max-width: 300px;
+                `;
+                document.body.appendChild(debugInfo);
+                
+                soundEngine.achievement();
+            } else {
+                elements.fpsCounter.style.display = 'none';
+                const debugInfo = document.getElementById('debug-info');
+                if (debugInfo) {
+                    debugInfo.remove();
+                }
+                console.log('Debug mode disabled');
+            }
+        }
+        
+        // Show menu
+        function showMenu() {
+            gameState.currentState = 'menu';
+            gameState.isGameRunning = false;
+            
+            if (runner) Runner.stop(runner);
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                gameLoopId = null;
+            }
+            
+            elements.menuScreen.classList.remove('hidden');
+            elements.gameOverScreen.classList.add('hidden');
+            elements.tutorialScreen.classList.add('hidden');
+            
+            // Mark as played
+            if (gameState.isFirstTime) {
+                gameState.isFirstTime = false;
+                localStorage.setItem('quantum-jump-played', 'true');
+            }
+        }
+
+        // Enhanced game loop with comprehensive monitoring and debugging
+        let lastFrameTime = performance.now();
+        let debugUpdateCounter = 0;
+        
+        function gameLoop(currentTime = performance.now()) {
+            if (!gameState.isGameRunning) return;
+            
+            try {
+                const deltaTime = currentTime - lastFrameTime;
+                lastFrameTime = currentTime;
+                
+                // Update core systems
+                performanceMonitor.update();
+                platformerPhysics.update(deltaTime);
+                updateMovement();
+                updateCamera();
+                updateScore();
+                updateAchievements();
+                
+                // Update FPS display if debug mode is enabled
+                if (gameState.debugMode && elements.fpsValue) {
+                    if (currentTime - gameState.lastFPSUpdate > 200) { // Update every 200ms
+                        elements.fpsValue.textContent = performanceMonitor.fps;
+                        gameState.lastFPSUpdate = currentTime;
+                        
+                        // Update debug info
+                        updateDebugInfo();
+                    }
+                }
+                
+                // Performance warning system
+                if (performanceMonitor.fps < 30 && !gameState.performanceWarnings) {
+                    gameState.performanceWarnings++;
+                    console.warn('Performance degradation detected. FPS:', performanceMonitor.fps);
+                    
+                    // Auto-optimize if performance is poor
+                    if (gameState.performanceWarnings > 5) {
+                        optimizePerformance();
+                    }
+                }
+                
+                // Periodic system maintenance
+                if (currentTime % 1000 < 16.67) {
+                    particleSystem.cleanup();
+                    cleanupMemory();
+                }
+                
+                gameLoopId = requestAnimationFrame(gameLoop);
+            } catch (error) {
+                console.error('Game loop error:', error);
+                handleGameLoopError(error);
+            }
+        }
+        
+        function updateDebugInfo() {
+            const debugInfo = document.getElementById('debug-info');
+            if (!debugInfo || !playerBody) return;
+            
+            const height = Math.max(0, Math.floor((GAME_CONFIG.gameHeight - playerBody.position.y) / 8));
+            
+            debugInfo.innerHTML = `
+                <div>FPS: ${performanceMonitor.fps}</div>
+                <div>Height: ${height}m</div>
+                <div>Velocity: ${Math.round(playerBody.velocity.y * 10) / 10}</div>
+                <div>Can Jump: ${gameState.canJump ? 'Yes' : 'No'}</div>
+                <div>Platforms: ${platforms.length}</div>
+                <div>Particles: ${particleSystem.getStats().activeParticles}</div>
+                <div>Coyote: ${Math.round(platformerPhysics.coyoteTimer)}</div>
+                <div>Jump Buffer: ${Math.round(platformerPhysics.jumpBufferTimer)}</div>
+                <div>Jump Charge: ${Math.round(platformerPhysics.jumpChargeAmount * 100)}%</div>
+            `;
+        }
+        
+        function updateAchievements() {
+            if (!playerBody) return;
+            
+            const height = Math.max(0, Math.floor((GAME_CONFIG.gameHeight - playerBody.position.y) / 8));
+            
+            // Height achievements
+            if (height >= 100 && !gameState.achievements.height100) {
+                gameState.achievements.height100 = true;
+                platformerPhysics.showAchievement('Sky Walker', 'Reached 100m height!');
+                soundEngine.achievement();
+            }
+            
+            if (height >= 500 && !gameState.achievements.height500) {
+                gameState.achievements.height500 = true;
+                platformerPhysics.showAchievement('Cloud Jumper', 'Reached 500m height!');
+                soundEngine.achievement();
+            }
+            
+            if (height >= 1000 && !gameState.achievements.height1000) {
+                gameState.achievements.height1000 = true;
+                platformerPhysics.showAchievement('Stratosphere Explorer', 'Reached 1000m height!');
+                soundEngine.achievement();
+            }
+        }
+        
+        function optimizePerformance() {
+            console.log('Auto-optimizing performance...');
+            
+            // Reduce particle count
+            GAME_CONFIG.particleLimit = Math.max(10, GAME_CONFIG.particleLimit - 5);
+            
+            // Clear excessive particles
+            particleSystem.clear();
+            
+            // Simplify visual effects
+            document.body.style.filter = 'none';
+            
+            gameState.performanceWarnings = 0;
+        }
+        
+        function cleanupMemory() {
+            // Clean up collision state older than 5 seconds
+            const currentTime = Date.now();
+            gameState.collisionState.forEach((value, key) => {
+                if (currentTime - value.timestamp > 5000) {
+                    gameState.collisionState.delete(key);
+                }
+            });
+            
+            // Clean up collision cooldowns older than 1 second
+            gameState.collisionCooldowns.forEach((value, key) => {
+                if (currentTime - value > 1000) {
+                    gameState.collisionCooldowns.delete(key);
+                }
+            });
+        }
+        
+        function handleGameLoopError(error) {
+            console.error('Critical game loop error:', error);
+            
+            // Try to recover
+            try {
+                if (gameState.isGameRunning) {
+                    gameOver();
+                }
+            } catch (recoveryError) {
+                console.error('Recovery failed:', recoveryError);
+                // Force reload as last resort
+                if (confirm('Game encountered a critical error. Reload page?')) {
+                    location.reload();
+                }
+            }
+        }
+
+        // Enhanced event listeners
+        function setupEventListeners() {
+            // Keyboard events with better handling
+            document.addEventListener('keydown', (e) => {
+                if (gameState.keys[e.code]) return;
+                gameState.keys[e.code] = true;
+                
+                if (gameState.currentState === 'playing') {
+                    if (e.code === 'Space' || e.code === 'ArrowUp') {
+                        e.preventDefault();
+                        jump();
+                    }
+                }
+                
+                // Global shortcuts
+                if (e.code === 'Escape') {
+                    if (gameState.currentState === 'playing') {
+                        showMenu();
+                    }
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                gameState.keys[e.code] = false;
+            });
+            
+            // Enhanced touch events with comprehensive mobile support
+            document.addEventListener('touchstart', async (e) => {
+                if (gameState.currentState === 'playing') {
+                    e.preventDefault();
+                    gameState.touchStartY = e.touches[0].clientY;
+                    await soundEngine.resumeContext();
+                    
+                    // Enhanced touch handling with multi-touch support
+                    const touch = e.touches[0];
+                    const touchX = touch.clientX;
+                    const touchY = touch.clientY;
+                    const screenWidth = window.innerWidth;
+                    
+                    // Left/right movement zones (bottom 30% of screen)
+                    if (touchY > window.innerHeight * 0.7) {
+                        if (touchX < screenWidth * 0.3) {
+                            gameState.keys['KeyA'] = true; // Left movement
+                        } else if (touchX > screenWidth * 0.7) {
+                            gameState.keys['KeyD'] = true; // Right movement
+                        }
+                    }
+                    
+                    // Jump zone (anywhere in upper 70% of screen)
+                    if (touchY <= window.innerHeight * 0.7) {
+                        gameState.keys['Space'] = true;
+                        platformerPhysics.requestJump();
+                    }
+                    
+                    // Visual feedback for touch with position indication
+                    const touchIndicator = document.createElement('div');
+                    touchIndicator.className = 'touch-indicator';
+                    touchIndicator.style.cssText = `
+                        position: fixed;
+                        left: ${touchX - 15}px;
+                        top: ${touchY - 15}px;
+                        width: 30px;
+                        height: 30px;
+                        border: 2px solid var(--primary-color);
+                        border-radius: 50%;
+                        background: rgba(0, 212, 255, 0.2);
+                        z-index: 400;
+                        pointer-events: none;
+                        animation: touchRipple 0.6s ease-out forwards;
+                    `;
+                    document.body.appendChild(touchIndicator);
+                    
+                    setTimeout(() => {
+                        if (touchIndicator.parentNode) {
+                            touchIndicator.parentNode.removeChild(touchIndicator);
+                        }
+                    }, 600);
+                    
+                } else if (gameState.currentState === 'menu') {
+                    await soundEngine.init();
+                }
+            }, { passive: false });
+            
+            document.addEventListener('touchend', (e) => {
+                if (gameState.currentState === 'playing') {
+                    e.preventDefault();
+                    // Release all touch controls
+                    gameState.keys['Space'] = false;
+                    gameState.keys['KeyA'] = false;
+                    gameState.keys['KeyD'] = false;
+                    
+                    // Release jump charge
+                    platformerPhysics.releaseJump();
+                }
+            }, { passive: false });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (gameState.currentState === 'playing') {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            // Button events with enhanced tutorial support
+            elements.startButton.addEventListener('click', async () => {
+                await soundEngine.init();
+                
+                // Show tutorial for first-time players
+                if (gameState.isFirstTime && !gameState.tutorialCompleted) {
+                    showTutorial();
+                } else {
+                    startGame();
+                }
+            });
+            
+            elements.tutorialButton.addEventListener('click', () => {
+                showTutorial();
+            });
+            
+            elements.tutorialStart.addEventListener('click', async () => {
+                await soundEngine.init();
+                gameState.tutorialCompleted = true;
+                localStorage.setItem('quantum-jump-tutorial', 'true');
+                closeTutorial();
+                startGame();
+            });
+            
+            elements.tutorialClose.addEventListener('click', () => {
+                closeTutorial();
+            });
+            
+            elements.restartButton.addEventListener('click', startGame);
+            elements.menuButton.addEventListener('click', showMenu);
+            
+            // Debug mode toggle (press D three times quickly)
+            let debugKeyCount = 0;
+            let debugKeyTimer = null;
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'KeyD') {
+                    debugKeyCount++;
+                    
+                    if (debugKeyTimer) clearTimeout(debugKeyTimer);
+                    debugKeyTimer = setTimeout(() => {
+                        debugKeyCount = 0;
+                    }, 1000);
+                    
+                    if (debugKeyCount >= 3) {
+                        toggleDebugMode();
+                        debugKeyCount = 0;
+                    }
+                }
+            });
+            
+            // Visibility change handling
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && gameState.isGameRunning) {
+                    // Pause game when tab is hidden
+                    gameState.isGameRunning = false;
+                    if (runner) Runner.stop(runner);
+                }
+            });
+            
+            // Window resize handling
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    GAME_CONFIG.gameWidth = window.innerWidth;
+                    GAME_CONFIG.gameHeight = window.innerHeight;
+                    GAME_CONFIG.platformGap = Math.max(100, window.innerHeight * 0.15);
+                }, 250);
+            });
+        }
+
+        // Initialize particles with optimized settings
+        function initParticles() {
+            try {
+                particlesJS('particles-js', {
+                    particles: {
+                        number: { value: window.innerWidth < 768 ? 40 : 60, density: { enable: true, value_area: 1000 } },
+                        color: { value: ["#00d4ff", "#4ecdc4", "#ffffff"] },
+                        shape: { type: "circle" },
+                        opacity: { value: 0.3, random: true, anim: { enable: true, speed: 0.5 } },
+                        size: { value: 2, random: true, anim: { enable: true, speed: 1 } },
+                        line_linked: { 
+                            enable: true, 
+                            distance: 120, 
+                            color: "#00d4ff", 
+                            opacity: 0.2, 
+                            width: 1 
+                        },
+                        move: { 
+                            enable: true, 
+                            speed: 0.8, 
+                            direction: "none", 
+                            random: true, 
+                            straight: false, 
+                            out_mode: "out" 
+                        }
+                    },
+                    interactivity: {
+                        detect_on: "window",
+                        events: { 
+                            onhover: { enable: true, mode: "repulse" }, 
+                            onclick: { enable: false } 
+                        },
+                        modes: { 
+                            repulse: { distance: 80, duration: 0.3 } 
+                        }
+                    },
+                    retina_detect: true
+                });
+            } catch (error) {
+                console.warn('Particles initialization failed:', error);
+            }
+        }
+
+        // Initialize game
+        async function init() {
+            try {
+                // Show loading screen
+                elements.loading.classList.remove('hidden');
+                
+                // Initialize components
+                await new Promise(resolve => setTimeout(resolve, 500)); // Simulate loading
+                initPhysics();
+                setupEventListeners();
+                initParticles();
+                
+                // Update best score display
+                elements.bestScore.textContent = 'Best: ' + gameState.score.best + 'm';
+                
+                // Hide loading and show menu
+                elements.loading.classList.add('hidden');
+                gameState.currentState = 'menu';
+                showMenu();
+                
+            } catch (error) {
+                console.error('Game initialization failed:', error);
+                // 🛡️ SECURITY FIX: Create error message securely without innerHTML
+                elements.loading.textContent = "";
+                const errorDiv = document.createElement("div");
+                errorDiv.style.cssText = "color: var(--danger-color); text-align: center;";
+                const errorText = document.createElement("div");
+                errorText.textContent = "Failed to load game.";
+                const breakElement = document.createElement("br");
+                const retryButton = document.createElement("button");
+                retryButton.textContent = "Retry";
+                retryButton.style.cssText = "margin-top: 1rem; padding: 0.5rem 1rem; background: var(--primary-color); border: none; border-radius: 4px; color: white; cursor: pointer;";
+                retryButton.onclick = () => location.reload();
+                errorDiv.appendChild(errorText);
+                errorDiv.appendChild(breakElement);
+                errorDiv.appendChild(retryButton);
+                elements.loading.appendChild(errorDiv);            }
+        }
+
+        // Start initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+    </script>
+</body>
+</html>

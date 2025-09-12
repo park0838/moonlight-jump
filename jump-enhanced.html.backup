@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jump - Enhanced Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            overflow: hidden;
+            font-family: 'Orbitron', monospace;
+            color: white;
+            height: 100vh;
+        }
+
+        /* Particle background */
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+        }
+
+        #ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        #ui div {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.9) 0%, rgba(26, 26, 46, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .screen.hidden {
+            display: none;
+        }
+
+        .title {
+            font-size: 4rem;
+            margin-bottom: 30px;
+            font-weight: 900;
+            background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            from { text-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
+            to { text-shadow: 0 0 40px rgba(0, 255, 255, 1); }
+        }
+
+        .instructions {
+            margin-bottom: 40px;
+            line-height: 2;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .game-button {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 700;
+            padding: 15px 40px;
+            margin: 15px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            text-transform: uppercase;
+        }
+
+        .game-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.6);
+            background: linear-gradient(45deg, #00ffff, #00ff80);
+        }
+
+        .game-button:active {
+            transform: translateY(0);
+        }
+
+        /* Enhanced Player */
+        #player {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffffff 0%, #00ffff 100%);
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.8),
+                inset 0 0 10px rgba(255, 255, 255, 0.3);
+            z-index: 999;
+            animation: playerPulse 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes playerPulse {
+            from { box-shadow: 0 0 20px rgba(0, 255, 255, 0.8); }
+            to { box-shadow: 0 0 40px rgba(0, 255, 255, 1); }
+        }
+
+        /* Enhanced Platforms */
+        .platform {
+            position: absolute;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #666;
+            z-index: 5;
+            text-shadow: 0 0 5px rgba(102, 102, 102, 0.8);
+            background: linear-gradient(90deg, rgba(102, 102, 102, 0.3), rgba(102, 102, 102, 0.1));
+            border-radius: 5px;
+            border: 1px solid rgba(102, 102, 102, 0.5);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .platform.spring {
+            color: #4CAF50;
+            background: linear-gradient(90deg, rgba(76, 175, 80, 0.3), rgba(76, 175, 80, 0.1));
+            border: 1px solid rgba(76, 175, 80, 0.7);
+            text-shadow: 0 0 10px rgba(76, 175, 80, 1);
+            animation: springGlow 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes springGlow {
+            from { box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+            to { box-shadow: 0 0 25px rgba(76, 175, 80, 1); }
+        }
+
+        /* Particle Effects */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 800;
+        }
+
+        .jump-particle {
+            width: 4px;
+            height: 4px;
+            background: #00ffff;
+            border-radius: 50%;
+            animation: jumpParticleAnim 0.5s ease-out forwards;
+        }
+
+        @keyframes jumpParticleAnim {
+            0% { 
+                opacity: 1; 
+                transform: scale(1) translateY(0); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(0.5) translateY(-50px); 
+            }
+        }
+
+        .land-particle {
+            width: 6px;
+            height: 6px;
+            background: #ffff00;
+            border-radius: 50%;
+            animation: landParticleAnim 0.3s ease-out forwards;
+        }
+
+        @keyframes landParticleAnim {
+            0% { 
+                opacity: 1; 
+                transform: scale(1) translateX(0); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(0.3) translateX(var(--spread, 20px)); 
+            }
+        }
+
+        /* Height Progress Bar */
+        #height-progress {
+            position: fixed;
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            overflow: hidden;
+        }
+
+        #height-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00ffff, #00ff80);
+            border-radius: 8px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .title { font-size: 2.5rem; }
+            #ui { font-size: 1rem; }
+            .game-button { font-size: 1rem; padding: 12px 30px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div id="game-container">
+        <div id="ui">
+            <div id="score">Height: <span id="height">0m</span></div>
+            <div id="best-score">Best: <span id="best">0m</span></div>
+        </div>
+
+        <div id="height-progress">
+            <div id="height-fill"></div>
+        </div>
+
+        <div id="player"></div>
+        <div id="platforms"></div>
+        <div id="particles-container"></div>
+
+        <!-- Menu Screen -->
+        <div id="menu-screen" class="screen">
+            <div class="title">QUANTUM JUMP</div>
+            <div class="instructions">
+                <p>⚡ SPACE: Quantum Leap</p>
+                <p>🔄 A/D or Arrow Keys: Phase Shift</p>
+                <p>📱 Mobile: Tap to Jump</p>
+                <p style="margin-top: 20px; font-size: 0.9rem; opacity: 0.7;">
+                    Reach the quantum realm beyond the stars
+                </p>
+            </div>
+            <button id="start-button" class="game-button">Initialize</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen hidden">
+            <div class="title" style="background: linear-gradient(45deg, #ff4757, #ff6b7a); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">QUANTUM COLLAPSE</div>
+            <div id="final-score" style="font-size: 2rem; margin-bottom: 20px;">Height Reached: <span>0m</span></div>
+            <div id="new-record" class="hidden" style="color: #2ed573; font-size: 1.8rem; margin-bottom: 20px; text-shadow: 0 0 20px rgba(46, 213, 115, 0.8);">QUANTUM BREAKTHROUGH!</div>
+            <button id="restart-button" class="game-button">Reinitialize</button>
+            <button id="menu-button" class="game-button">Main Portal</button>
+        </div>
+    </div>
+
+    <script>
+        // Particle.js configuration
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: ["#00ffff", "#0080ff", "#ffffff"] },
+                shape: { type: "circle" },
+                opacity: { value: 0.5, random: true },
+                size: { value: 3, random: true },
+                line_linked: { enable: true, distance: 150, color: "#00ffff", opacity: 0.4, width: 1 },
+                move: { enable: true, speed: 1, direction: "none", random: true, straight: false, out_mode: "out" }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" } },
+                modes: { repulse: { distance: 100, duration: 0.4 }, push: { particles_nb: 4 } }
+            },
+            retina_detect: true
+        });
+
+        // Matter.js modules
+        const { Engine, World, Bodies, Body, Events, Runner } = Matter;
+
+        // Game configuration
+        const GAME_CONFIG = {
+            jumpPower: 15,
+            horizontalSpeed: 8,
+            platformGap: 120,
+            gameWidth: window.innerWidth,
+            gameHeight: window.innerHeight,
+            maxHeight: 10000 // Target height for progress bar
+        };
+
+        // Physics engine
+        let engine, world, runner;
+        let playerBody;
+        let platforms = [];
+        let particles = [];
+
+        // Game state
+        let gameState = {
+            currentState: 'menu',
+            camera: { y: 0 },
+            score: { height: 0, best: localStorage.getItem('quantum-jump-best') || 0 },
+            keys: {},
+            canJump: false,
+            isGameRunning: false
+        };
+
+        // DOM elements
+        const elements = {
+            player: document.getElementById('player'),
+            platformsContainer: document.getElementById('platforms'),
+            particlesContainer: document.getElementById('particles-container'),
+            heightScore: document.getElementById('height'),
+            bestScore: document.getElementById('best'),
+            heightFill: document.getElementById('height-fill'),
+            menuScreen: document.getElementById('menu-screen'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            finalScore: document.querySelector('#final-score span'),
+            newRecord: document.getElementById('new-record'),
+            startButton: document.getElementById('start-button'),
+            restartButton: document.getElementById('restart-button'),
+            menuButton: document.getElementById('menu-button')
+        };
+
+        // Enhanced Sound System with Web Audio API
+        class SoundEngine {
+            constructor() {
+                this.audioContext = null;
+                this.masterGain = null;
+                this.init();
+            }
+
+            init() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.audioContext.createGain();
+                    this.masterGain.connect(this.audioContext.destination);
+                    this.masterGain.gain.value = 0.3;
+                } catch (e) {
+                    console.warn('Web Audio API not supported');
+                }
+            }
+
+            playTone(frequency, duration, type = 'sine', envelope = null) {
+                if (!this.audioContext) return;
+
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(this.masterGain);
+
+                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                oscillator.type = type;
+
+                if (envelope) {
+                    gainNode.gain.setValueAtTime(envelope.attack, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(envelope.decay, this.audioContext.currentTime + duration * 0.3);
+                    gainNode.gain.exponentialRampToValueAtTime(envelope.sustain, this.audioContext.currentTime + duration * 0.7);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+                } else {
+                    gainNode.gain.setValueAtTime(0.5, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+                }
+
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + duration);
+            }
+
+            jump() {
+                this.playTone(440, 0.2, 'square', { attack: 0.3, decay: 0.2, sustain: 0.1 });
+                setTimeout(() => this.playTone(660, 0.1, 'sine'), 50);
+            }
+
+            land() {
+                this.playTone(220, 0.15, 'triangle', { attack: 0.5, decay: 0.2, sustain: 0.1 });
+            }
+
+            spring() {
+                this.playTone(880, 0.3, 'sawtooth', { attack: 0.8, decay: 0.3, sustain: 0.2 });
+            }
+
+            gameOver() {
+                this.playTone(200, 0.5, 'triangle');
+                setTimeout(() => this.playTone(150, 0.5, 'triangle'), 200);
+                setTimeout(() => this.playTone(100, 1, 'triangle'), 400);
+            }
+        }
+
+        const soundEngine = new SoundEngine();
+
+        // Particle Effects System
+        class ParticleSystem {
+            static createJumpParticles(x, y) {
+                for (let i = 0; i < 8; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle jump-particle';
+                    particle.style.left = (x + Math.random() * 20 - 10) + 'px';
+                    particle.style.top = (y + Math.random() * 10 - 5) + 'px';
+                    elements.particlesContainer.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 500);
+                }
+            }
+
+            static createLandParticles(x, y) {
+                for (let i = 0; i < 12; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle land-particle';
+                    const spread = (Math.random() - 0.5) * 60;
+                    particle.style.setProperty('--spread', spread + 'px');
+                    particle.style.left = (x + Math.random() * 20 - 10) + 'px';
+                    particle.style.top = (y + 15) + 'px';
+                    elements.particlesContainer.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 300);
+                }
+            }
+
+            static createSpringParticles(x, y) {
+                for (let i = 0; i < 15; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.width = '3px';
+                    particle.style.height = '3px';
+                    particle.style.background = '#4CAF50';
+                    particle.style.borderRadius = '50%';
+                    particle.style.left = (x + Math.random() * 40 - 20) + 'px';
+                    particle.style.top = (y + Math.random() * 10 - 5) + 'px';
+                    particle.style.boxShadow = '0 0 10px rgba(76, 175, 80, 1)';
+                    particle.style.animation = 'jumpParticleAnim 0.8s ease-out forwards';
+                    elements.particlesContainer.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 800);
+                }
+            }
+        }
+
+        // Initialize physics engine
+        function initPhysics() {
+            engine = Engine.create();
+            world = engine.world;
+            runner = Runner.create();
+            
+            engine.world.gravity.y = 1;
+            engine.world.gravity.x = 0;
+            
+            // Enhanced collision detection
+            Events.on(engine, 'collisionStart', function(event) {
+                event.pairs.forEach(pair => {
+                    const { bodyA, bodyB } = pair;
+                    
+                    if (bodyA.label === 'player' && bodyB.label === 'ground-sensor') {
+                        gameState.canJump = true;
+                        soundEngine.land();
+                        ParticleSystem.createLandParticles(playerBody.position.x, playerBody.position.y);
+                    } else if (bodyB.label === 'player' && bodyA.label === 'ground-sensor') {
+                        gameState.canJump = true;
+                        soundEngine.land();
+                        ParticleSystem.createLandParticles(playerBody.position.x, playerBody.position.y);
+                    }
+                    
+                    // Spring platform enhanced
+                    if ((bodyA.label === 'player' && bodyB.label === 'spring') ||
+                        (bodyB.label === 'player' && bodyA.label === 'spring')) {
+                        setTimeout(() => {
+                            if (playerBody && gameState.canJump) {
+                                Body.setVelocity(playerBody, { x: playerBody.velocity.x, y: -22 });
+                                soundEngine.spring();
+                                ParticleSystem.createSpringParticles(playerBody.position.x, playerBody.position.y);
+                            }
+                        }, 100);
+                    }
+                });
+            });
+            
+            Events.on(engine, 'collisionEnd', function(event) {
+                event.pairs.forEach(pair => {
+                    const { bodyA, bodyB } = pair;
+                    
+                    if ((bodyA.label === 'player' && bodyB.label === 'ground-sensor') ||
+                        (bodyB.label === 'player' && bodyA.label === 'ground-sensor')) {
+                        setTimeout(() => { gameState.canJump = false; }, 100);
+                    }
+                });
+            });
+        }
+
+        // Create player with enhanced properties
+        function createPlayer() {
+            const startX = GAME_CONFIG.gameWidth / 2;
+            const startY = GAME_CONFIG.gameHeight - 150;
+            
+            playerBody = Bodies.circle(startX, startY, 15, {
+                restitution: 0.1,
+                friction: 0.001,
+                frictionAir: 0.01,
+                label: 'player',
+                render: { fillStyle: '#00ffff' }
+            });
+            
+            World.add(world, playerBody);
+        }
+
+        // Enhanced platform creation
+        function createPlatform(x, y, type, width) {
+            const platformWidth = width * 20;
+            const platformHeight = 20;
+            
+            // Physics body
+            const platformBody = Bodies.rectangle(x + platformWidth/2, y + platformHeight/2, platformWidth, platformHeight, {
+                isStatic: true,
+                label: type === 'spring' ? 'spring' : 'platform'
+            });
+            
+            // Ground sensor
+            const sensorBody = Bodies.rectangle(x + platformWidth/2, y - 5, platformWidth, 10, {
+                isStatic: true,
+                isSensor: true,
+                label: 'ground-sensor'
+            });
+            
+            World.add(world, [platformBody, sensorBody]);
+            
+            // Enhanced visual element
+            const element = document.createElement('div');
+            element.className = `platform ${type}`;
+            element.textContent = (type === 'spring' ? '↑' : '═').repeat(width);
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            element.style.width = platformWidth + 'px';
+            element.style.height = platformHeight + 'px';
+            
+            elements.platformsContainer.appendChild(element);
+            platforms.push({ element, body: platformBody, sensor: sensorBody, x, y, type });
+        }
+
+        // Generate enhanced platforms
+        function generateInitialPlatforms() {
+            // Starting platform
+            createPlatform(GAME_CONFIG.gameWidth / 2 - 100, GAME_CONFIG.gameHeight - 100, 'normal', 10);
+            
+            // Generate platforms with enhanced variety
+            for (let i = 1; i < 100; i++) {
+                const x = Math.random() * (GAME_CONFIG.gameWidth - 200) + 100;
+                const y = GAME_CONFIG.gameHeight - 100 - (i * GAME_CONFIG.platformGap);
+                
+                let type = 'normal';
+                if (i % 10 === 0) type = 'spring'; // Every 10th platform
+                else if (i > 20 && Math.random() < 0.15) type = 'spring'; // 15% chance after level 20
+                
+                const width = Math.random() > 0.3 ? 5 : Math.random() > 0.6 ? 6 : 4;
+                createPlatform(x, y, type, width);
+            }
+        }
+
+        // Enhanced jump function
+        function jump() {
+            if (gameState.canJump && playerBody) {
+                Body.setVelocity(playerBody, { x: playerBody.velocity.x, y: -GAME_CONFIG.jumpPower });
+                gameState.canJump = false;
+                soundEngine.jump();
+                ParticleSystem.createJumpParticles(playerBody.position.x, playerBody.position.y);
+            }
+        }
+
+        // Enhanced movement with better physics
+        function updateMovement() {
+            if (!playerBody) return;
+            
+            let forceX = 0;
+            if (gameState.keys['ArrowLeft'] || gameState.keys['KeyA']) forceX = -0.015;
+            if (gameState.keys['ArrowRight'] || gameState.keys['KeyD']) forceX = 0.015;
+            
+            if (forceX !== 0) {
+                Body.applyForce(playerBody, playerBody.position, { x: forceX, y: 0 });
+            }
+            
+            // Enhanced velocity limits
+            const maxVelocity = 10;
+            if (Math.abs(playerBody.velocity.x) > maxVelocity) {
+                Body.setVelocity(playerBody, { 
+                    x: Math.sign(playerBody.velocity.x) * maxVelocity, 
+                    y: playerBody.velocity.y 
+                });
+            }
+        }
+
+        // Enhanced camera and visuals
+        function updateCamera() {
+            if (!playerBody) return;
+            
+            const targetY = Math.min(0, GAME_CONFIG.gameHeight / 2 - playerBody.position.y);
+            gameState.camera.y += (targetY - gameState.camera.y) * 0.12;
+            
+            // Update player visual position
+            elements.player.style.left = (playerBody.position.x - 15) + 'px';
+            elements.player.style.top = (playerBody.position.y - 15 + gameState.camera.y) + 'px';
+            
+            // Update platforms position
+            platforms.forEach(platform => {
+                platform.element.style.transform = `translateY(${gameState.camera.y}px)`;
+            });
+            
+            // Update particles container
+            elements.particlesContainer.style.transform = `translateY(${gameState.camera.y}px)`;
+        }
+
+        // Enhanced score system
+        function updateScore() {
+            if (!playerBody) return;
+            
+            const height = Math.max(0, Math.floor((GAME_CONFIG.gameHeight - playerBody.position.y) / 10));
+            if (height > gameState.score.height) {
+                gameState.score.height = height;
+                elements.heightScore.textContent = height + 'm';
+                
+                // Update progress bar
+                const progress = Math.min(100, (height / GAME_CONFIG.maxHeight) * 100);
+                elements.heightFill.style.width = progress + '%';
+                
+                // Dynamic background color based on height
+                const hue = Math.min(240, height / 50);
+                document.body.style.background = `linear-gradient(135deg, 
+                    hsl(${240 - hue}, 80%, 5%) 0%, 
+                    hsl(${240 - hue}, 60%, 15%) 50%, 
+                    hsl(${240 - hue}, 40%, 25%) 100%)`;
+            }
+            
+            // Check game over
+            if (playerBody.position.y > GAME_CONFIG.gameHeight + 300) {
+                gameOver();
+            }
+        }
+
+        // Enhanced game over
+        function gameOver() {
+            gameState.isGameRunning = false;
+            gameState.currentState = 'gameOver';
+            Runner.stop(runner);
+            soundEngine.gameOver();
+            
+            elements.finalScore.textContent = gameState.score.height + 'm';
+            
+            if (gameState.score.height > gameState.score.best) {
+                gameState.score.best = gameState.score.height;
+                localStorage.setItem('quantum-jump-best', gameState.score.best);
+                elements.newRecord.classList.remove('hidden');
+                elements.bestScore.textContent = 'Best: ' + gameState.score.best + 'm';
+            } else {
+                elements.newRecord.classList.add('hidden');
+            }
+            
+            elements.gameOverScreen.classList.remove('hidden');
+        }
+
+        // Reset game
+        function resetGame() {
+            if (world) {
+                World.clear(world);
+                Engine.clear(engine);
+            }
+            
+            gameState.camera.y = 0;
+            gameState.score.height = 0;
+            gameState.canJump = false;
+            platforms = [];
+            
+            elements.platformsContainer.innerHTML = '';
+            elements.particlesContainer.innerHTML = '';
+            elements.heightScore.textContent = '0m';
+            elements.heightFill.style.width = '0%';
+            
+            // Reset background
+            document.body.style.background = 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)';
+        }
+
+        // Start game
+        function startGame() {
+            gameState.currentState = 'playing';
+            elements.menuScreen.classList.add('hidden');
+            elements.gameOverScreen.classList.add('hidden');
+            
+            resetGame();
+            createPlayer();
+            generateInitialPlatforms();
+            
+            Runner.run(runner, engine);
+            gameState.isGameRunning = true;
+            gameLoop();
+        }
+
+        // Show menu
+        function showMenu() {
+            gameState.currentState = 'menu';
+            gameState.isGameRunning = false;
+            if (runner) Runner.stop(runner);
+            elements.menuScreen.classList.remove('hidden');
+            elements.gameOverScreen.classList.add('hidden');
+        }
+
+        // Enhanced game loop
+        function gameLoop() {
+            if (!gameState.isGameRunning) return;
+            
+            updateMovement();
+            updateCamera();
+            updateScore();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            document.addEventListener('keydown', (e) => {
+                if (gameState.keys[e.code]) return;
+                gameState.keys[e.code] = true;
+                
+                if (gameState.currentState === 'playing') {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        jump();
+                    }
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                gameState.keys[e.code] = false;
+            });
+            
+            document.addEventListener('touchstart', (e) => {
+                if (gameState.currentState === 'playing') {
+                    e.preventDefault();
+                    jump();
+                }
+            });
+            
+            elements.startButton.addEventListener('click', startGame);
+            elements.restartButton.addEventListener('click', startGame);
+            elements.menuButton.addEventListener('click', showMenu);
+        }
+
+        // Initialize
+        function init() {
+            initPhysics();
+            setupEventListeners();
+            elements.bestScore.textContent = 'Best: ' + gameState.score.best + 'm';
+            showMenu();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
