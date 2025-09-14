@@ -1,0 +1,24 @@
+{
+  "name": "moonlight-jump-main",
+  "version": "1.0.0",
+  "description": "달빛 속에서 토끼가 달을 향해 뛰어오르는 순수 이모지 기반 플랫폼 게임!",
+  "main": "moonlight-jump-infinite.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/park0838/moonlight-jump.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/park0838/moonlight-jump/issues"
+  },
+  "homepage": "https://github.com/park0838/moonlight-jump#readme",
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  }
+}
